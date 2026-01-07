@@ -122,15 +122,15 @@ export default async function StudentLearnPage() {
           <div className="flex items-center gap-4">
             <Progress
               value={
-                (courses.reduce((acc, c) => acc + c.completed, 0) /
-                  courses.reduce((acc, c) => acc + c.lessons, 0)) *
+                (courses.reduce((acc: number, c) => acc + c.completed, 0) /
+                  courses.reduce((acc: number, c) => acc + c.lessons, 0)) *
                 100
               }
               className="flex-1 h-3"
             />
             <span className="text-sm font-medium">
-              {courses.reduce((acc, c) => acc + c.completed, 0)} /{" "}
-              {courses.reduce((acc, c) => acc + c.lessons, 0)} lessons
+              {courses.reduce((acc: number, c) => acc + c.completed, 0)} /{" "}
+              {courses.reduce((acc: number, c) => acc + c.lessons, 0)} lessons
             </span>
           </div>
         </CardContent>

@@ -101,7 +101,7 @@ export default async function TeacherLeaderboardPage() {
           </CardHeader>
           <CardContent>
             <p className="text-3xl font-bold">
-              {leaderboard.reduce((sum, s) => sum + s.totalScore, 0)}
+              {leaderboard.reduce((sum: number, s) => sum + s.totalScore, 0)}
             </p>
           </CardContent>
         </Card>
@@ -113,7 +113,7 @@ export default async function TeacherLeaderboardPage() {
             <p className="text-3xl font-bold">
               {leaderboard.length > 0
                 ? Math.round(
-                    leaderboard.reduce((sum, s) => sum + s.totalScore, 0) /
+                    leaderboard.reduce((sum: number, s) => sum + s.totalScore, 0) /
                       leaderboard.length
                   )
                 : 0}
@@ -146,7 +146,7 @@ export default async function TeacherLeaderboardPage() {
                 const rank = index + 1;
                 const initials = student.fullName
                   .split(" ")
-                  .map((n) => n[0])
+                  .map((n: string) => n[0])
                   .join("")
                   .toUpperCase()
                   .slice(0, 2);

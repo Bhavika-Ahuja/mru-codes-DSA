@@ -120,7 +120,7 @@ export default async function StudentLeaderboardPage() {
                         <AvatarFallback className="text-lg bg-primary/10 text-primary">
                           {student.fullName
                             .split(" ")
-                            .map((n) => n[0])
+                            .map((n: string) => n[0])
                             .join("")
                             .slice(0, 2)}
                         </AvatarFallback>
@@ -179,7 +179,7 @@ export default async function StudentLeaderboardPage() {
                       <AvatarFallback className="bg-primary/10 text-primary text-sm">
                         {student.fullName
                           .split(" ")
-                          .map((n) => n[0])
+                          .map((n: string) => n[0])
                           .join("")
                           .slice(0, 2)}
                       </AvatarFallback>
@@ -248,7 +248,7 @@ export default async function StudentLeaderboardPage() {
                             <AvatarFallback className="bg-primary/10 text-primary text-sm">
                               {student.fullName
                                 .split(" ")
-                                .map((n) => n[0])
+                                .map((n: string) => n[0])
                                 .join("")
                                 .slice(0, 2)}
                             </AvatarFallback>

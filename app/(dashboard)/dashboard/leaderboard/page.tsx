@@ -10,13 +10,6 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 
 async function getLeaderboard() {
   const supabase = await createClient();
@@ -89,12 +82,11 @@ export default async function LeaderboardPage() {
             {leaderboard.slice(0, 3).map((student) => (
               <Card
                 key={student.id}
-                className={`relative overflow-hidden ${
-                  student.rank === 1 ? "border-yellow-500/50" : ""
-                }`}
+                className={`relative overflow-hidden ${student.rank === 1 ? "border-yellow-500/50" : ""
+                  }`}
               >
                 {student.rank === 1 && (
-                  <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-yellow-500 via-yellow-400 to-yellow-500" />
+                  <div className="absolute top-0 left-0 right-0 h-1 bg-linear-to-r from-yellow-500 via-yellow-400 to-yellow-500" />
                 )}
                 <CardContent className="pt-6">
                   <div className="flex flex-col items-center text-center">
@@ -104,19 +96,18 @@ export default async function LeaderboardPage() {
                         <AvatarFallback className="text-lg bg-primary/10 text-primary">
                           {student.full_name
                             .split(" ")
-                            .map((n) => n[0])
+                            .map((n: string) => n[0])
                             .join("")
                             .slice(0, 2)}
                         </AvatarFallback>
                       </Avatar>
                       <div
-                        className={`absolute -top-2 -right-2 h-8 w-8 rounded-full flex items-center justify-center ${
-                          student.rank === 1
-                            ? "bg-yellow-500"
-                            : student.rank === 2
+                        className={`absolute -top-2 -right-2 h-8 w-8 rounded-full flex items-center justify-center ${student.rank === 1
+                          ? "bg-yellow-500"
+                          : student.rank === 2
                             ? "bg-gray-400"
                             : "bg-amber-600"
-                        } text-white font-bold text-sm`}
+                          } text-white font-bold text-sm`}
                       >
                         {student.rank}
                       </div>
@@ -151,9 +142,8 @@ export default async function LeaderboardPage() {
                 {leaderboard.map((student) => (
                   <div
                     key={student.id}
-                    className={`flex items-center gap-4 p-3 rounded-lg transition-colors hover:bg-muted/50 ${
-                      student.rank <= 3 ? getRankBadge(student.rank) : ""
-                    }`}
+                    className={`flex items-center gap-4 p-3 rounded-lg transition-colors hover:bg-muted/50 ${student.rank <= 3 ? getRankBadge(student.rank) : ""
+                      }`}
                   >
                     <div className="w-8 text-center font-bold text-muted-foreground">
                       {getRankIcon(student.rank) || `#${student.rank}`}
@@ -163,7 +153,7 @@ export default async function LeaderboardPage() {
                       <AvatarFallback className="bg-primary/10 text-primary text-sm">
                         {student.full_name
                           .split(" ")
-                          .map((n) => n[0])
+                          .map((n: string) => n[0])
                           .join("")
                           .slice(0, 2)}
                       </AvatarFallback>
@@ -219,11 +209,10 @@ export default async function LeaderboardPage() {
                           {sectionStudents.slice(0, 10).map((student) => (
                             <div
                               key={student.id}
-                              className={`flex items-center gap-4 p-3 rounded-lg hover:bg-muted/50 ${
-                                student.sectionRank <= 3
-                                  ? getRankBadge(student.sectionRank)
-                                  : ""
-                              }`}
+                              className={`flex items-center gap-4 p-3 rounded-lg hover:bg-muted/50 ${student.sectionRank <= 3
+                                ? getRankBadge(student.sectionRank)
+                                : ""
+                                }`}
                             >
                               <div className="w-8 text-center font-bold text-muted-foreground">
                                 {getRankIcon(student.sectionRank) ||
@@ -236,7 +225,7 @@ export default async function LeaderboardPage() {
                                 <AvatarFallback className="bg-primary/10 text-primary text-sm">
                                   {student.full_name
                                     .split(" ")
-                                    .map((n) => n[0])
+                                    .map((n: string) => n[0])
                                     .join("")
                                     .slice(0, 2)}
                                 </AvatarFallback>

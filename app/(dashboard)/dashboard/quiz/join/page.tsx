@@ -52,7 +52,9 @@ export default function JoinQuizPage() {
         return;
       }
 
-      if (session.status === "completed") {
+      const sessionData = session as { id: string; status: string };
+
+      if (sessionData.status === "completed") {
         toast.error("This quiz session has already ended");
         return;
       }
@@ -61,17 +63,18 @@ export default function JoinQuizPage() {
       const { data: existingParticipant } = await supabase
         .from("session_participants")
         .select("id")
-        .eq("session_id", session.id)
-        .eq("user_id", user.id)
+        .eq("session_id", sessionData.id)
+        .eq("student_id", user.id)
         .single();
 
       if (!existingParticipant) {
         // Join the session
         const { error: joinError } = await supabase
           .from("session_participants")
+          // @ts-expect-error - Supabase types issue
           .insert({
-            session_id: session.id,
-            user_id: user.id,
+            session_id: sessionData.id,
+            student_id: user.id,
           });
 
         if (joinError) {
@@ -81,7 +84,7 @@ export default function JoinQuizPage() {
       }
 
       toast.success("Joined successfully!");
-      router.push(`/dashboard/quiz/play/${session.id}`);
+      router.push(`/dashboard/quiz/play/${sessionData.id}`);
     } catch (error) {
       console.error("Error joining quiz:", error);
       toast.error("Something went wrong. Please try again.");
