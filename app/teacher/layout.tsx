@@ -1,0 +1,48 @@
+import { redirect } from "next/navigation";
+import { getProfile } from "@/lib/supabase/server";
+import { DashboardNav } from "@/components/dashboard/nav";
+import { DashboardHeader } from "@/components/dashboard/header";
+import { MobileNav } from "@/components/dashboard/mobile-nav";
+
+export default async function TeacherLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  const profile = await getProfile();
+
+  if (!profile) {
+    redirect("/login");
+  }
+
+  // Double-check role (middleware should have caught this, but just in case)
+  if (profile.role !== "teacher") {
+    redirect("/student/dashboard");
+  }
+
+  // Transform Prisma profile to match component props
+  const profileData = {
+    id: profile.id,
+    email: profile.email,
+    full_name: profile.fullName,
+    roll_number: profile.rollNumber,
+    section: profile.section,
+    role: profile.role as "student" | "teacher",
+    avatar_url: profile.avatarUrl,
+    total_points: profile.totalScore,
+    created_at: profile.createdAt.toISOString(),
+    updated_at: profile.updatedAt.toISOString(),
+  };
+
+  return (
+    <div className="min-h-screen bg-background">
+      <DashboardHeader profile={profileData} />
+      <div className="flex">
+        <DashboardNav role={profile.role} />
+        <main className="flex-1 p-4 pb-24 lg:p-8 lg:pb-8">{children}</main>
+      </div>
+      <MobileNav role={profile.role} />
+    </div>
+  );
+}
+

@@ -1,0 +1,196 @@
+// Prisma Schema for DSA Learning Platform
+// Using PostgreSQL with Supabase
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ============================================================
+// ENUMS
+// ============================================================
+
+enum UserRole {
+  student
+  teacher
+}
+
+enum QuizStatus {
+  draft
+  published
+  archived
+}
+
+enum SessionStatus {
+  waiting
+  live
+  completed
+}
+
+enum QuestionType {
+  mcq
+  code
+  true_false
+}
+
+enum DifficultyLevel {
+  easy
+  medium
+  hard
+}
+
+// ============================================================
+// MODELS
+// ============================================================
+
+/// User profile linked to Supabase Auth (auth.users)
+model Profile {
+  id           String   @id @db.Uuid
+  email        String   @unique
+  fullName     String   @map("full_name")
+  rollNumber   String?  @map("roll_number")
+  section      String?
+  role         UserRole @default(student)
+  avatarUrl    String?  @map("avatar_url")
+  totalScore   Int      @default(0) @map("total_score")
+  quizzesTaken Int      @default(0) @map("quizzes_taken")
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt    DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  // Relations
+  quizzesCreated        Quiz[]               @relation("QuizCreator")
+  sessionsHosted        QuizSession[]        @relation("SessionHost")
+  sessionParticipations SessionParticipant[]
+  submissions           Submission[]
+
+  @@index([section])
+  @@index([role])
+  @@index([totalScore(sort: Desc)])
+  @@map("profiles")
+}
+
+/// Quiz containing questions on a DSA topic
+model Quiz {
+  id              String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  title           String
+  description     String?
+  topic           String
+  difficulty      DifficultyLevel @default(medium)
+  timePerQuestion Int             @default(30) @map("time_per_question")
+  createdById     String          @map("created_by") @db.Uuid
+  status          QuizStatus      @default(draft)
+  totalQuestions  Int             @default(0) @map("total_questions")
+  createdAt       DateTime        @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt       DateTime        @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  // Relations
+  createdBy Profile       @relation("QuizCreator", fields: [createdById], references: [id], onDelete: Cascade)
+  questions Question[]
+  sessions  QuizSession[]
+
+  @@index([status])
+  @@index([createdById])
+  @@index([topic])
+  @@map("quizzes")
+}
+
+/// Quiz question with JSONB options
+model Question {
+  id           String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  quizId       String       @map("quiz_id") @db.Uuid
+  questionText String       @map("question_text")
+  questionType QuestionType @default(mcq) @map("question_type")
+  points       Int          @default(10)
+  timeLimit    Int?         @map("time_limit")
+  orderIndex   Int          @default(0) @map("order_index")
+  /// JSONB: [{id: "a", text: "Option A", is_correct: false}, ...]
+  options      Json         @default("[]")
+  codeTemplate String?      @map("code_template")
+  explanation  String?
+  createdAt    DateTime     @default(now()) @map("created_at") @db.Timestamptz
+
+  // Relations
+  quiz              Quiz          @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  currentInSessions QuizSession[] @relation("CurrentQuestion")
+  submissions       Submission[]
+
+  @@index([quizId])
+  @@index([quizId, orderIndex])
+  @@map("questions")
+}
+
+/// Live quiz session for real-time quizzes
+model QuizSession {
+  id                   String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  quizId               String        @map("quiz_id") @db.Uuid
+  hostId               String        @map("host_id") @db.Uuid
+  roomCode             String        @unique @map("room_code")
+  status               SessionStatus @default(waiting)
+  currentQuestionId    String?       @map("current_question_id") @db.Uuid
+  currentQuestionIndex Int           @default(0) @map("current_question_index")
+  questionStartedAt    DateTime?     @map("question_started_at") @db.Timestamptz
+  startedAt            DateTime?     @map("started_at") @db.Timestamptz
+  endedAt              DateTime?     @map("ended_at") @db.Timestamptz
+  createdAt            DateTime      @default(now()) @map("created_at") @db.Timestamptz
+
+  // Relations
+  quiz            Quiz                 @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  host            Profile              @relation("SessionHost", fields: [hostId], references: [id], onDelete: Cascade)
+  currentQuestion Question?            @relation("CurrentQuestion", fields: [currentQuestionId], references: [id], onDelete: SetNull)
+  participants    SessionParticipant[]
+  submissions     Submission[]
+
+  @@index([roomCode])
+  @@index([status])
+  @@index([hostId])
+  @@map("quiz_sessions")
+}
+
+/// Student participation in a quiz session
+model SessionParticipant {
+  id                String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  sessionId         String   @map("session_id") @db.Uuid
+  studentId         String   @map("student_id") @db.Uuid
+  sessionScore      Int      @default(0) @map("session_score")
+  questionsAnswered Int      @default(0) @map("questions_answered")
+  correctAnswers    Int      @default(0) @map("correct_answers")
+  joinedAt          DateTime @default(now()) @map("joined_at") @db.Timestamptz
+
+  // Relations
+  session QuizSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  student Profile     @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([sessionId, studentId])
+  @@index([sessionId])
+  @@index([sessionId, sessionScore(sort: Desc)])
+  @@map("session_participants")
+}
+
+/// Student answer submission
+model Submission {
+  id               String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  sessionId        String   @map("session_id") @db.Uuid
+  questionId       String   @map("question_id") @db.Uuid
+  studentId        String   @map("student_id") @db.Uuid
+  selectedOptionId String?  @map("selected_option_id")
+  answerText       String?  @map("answer_text")
+  isCorrect        Boolean  @default(false) @map("is_correct")
+  score            Int      @default(0)
+  timeTaken        Int?     @map("time_taken")
+  submittedAt      DateTime @default(now()) @map("submitted_at") @db.Timestamptz
+
+  // Relations
+  session  QuizSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  question Question    @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  student  Profile     @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([sessionId, questionId, studentId])
+  @@index([sessionId])
+  @@index([studentId])
+  @@index([questionId])
+  @@index([sessionId, studentId])
+  @@map("submissions")
+}
