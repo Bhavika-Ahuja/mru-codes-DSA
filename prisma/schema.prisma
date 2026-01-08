@@ -42,6 +42,18 @@ enum DifficultyLevel {
   hard
 }
 
+enum AssignmentStatus {
+  draft
+  published
+  closed
+}
+
+enum SubmissionStatus {
+  submitted
+  graded
+  returned
+}
+
 // ============================================================
 // MODELS
 // ============================================================
@@ -61,10 +73,12 @@ model Profile {
   updatedAt    DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
 
   // Relations
-  quizzesCreated        Quiz[]               @relation("QuizCreator")
-  sessionsHosted        QuizSession[]        @relation("SessionHost")
+  quizzesCreated        Quiz[]                 @relation("QuizCreator")
+  sessionsHosted        QuizSession[]          @relation("SessionHost")
   sessionParticipations SessionParticipant[]
   submissions           Submission[]
+  assignmentsCreated    Assignment[]           @relation("AssignmentCreator")
+  assignmentSubmissions AssignmentSubmission[]
 
   @@index([section])
   @@index([role])
@@ -193,4 +207,58 @@ model Submission {
   @@index([questionId])
   @@index([sessionId, studentId])
   @@map("submissions")
+}
+
+/// Assignment created by teacher
+model Assignment {
+  id          String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  title       String
+  description String?
+  topic       String?
+  difficulty  DifficultyLevel  @default(medium)
+  maxPoints   Int              @default(100) @map("max_points")
+  dueDate     DateTime?        @map("due_date") @db.Timestamptz
+  status      AssignmentStatus @default(draft)
+  pdfUrl      String?          @map("pdf_url") // URL to PDF file in Supabase Storage
+  pdfFileName String?          @map("pdf_file_name")
+  createdById String           @map("created_by") @db.Uuid
+  createdAt   DateTime         @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt   DateTime         @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  // Relations
+  createdBy   Profile                @relation("AssignmentCreator", fields: [createdById], references: [id], onDelete: Cascade)
+  submissions AssignmentSubmission[]
+
+  @@index([status])
+  @@index([createdById])
+  @@index([dueDate])
+  @@index([topic])
+  @@map("assignments")
+}
+
+/// Student submission for an assignment
+model AssignmentSubmission {
+  id           String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  assignmentId String           @map("assignment_id") @db.Uuid
+  studentId    String           @map("student_id") @db.Uuid
+  pdfUrl       String           @map("pdf_url") // URL to submitted PDF file in Supabase Storage
+  pdfFileName  String           @map("pdf_file_name")
+  status       SubmissionStatus @default(submitted)
+  grade        Int? // Points awarded (0 to maxPoints)
+  feedback     String?
+  gradedAt     DateTime?        @map("graded_at") @db.Timestamptz
+  gradedById   String?          @map("graded_by") @db.Uuid // Teacher who graded
+  submittedAt  DateTime         @default(now()) @map("submitted_at") @db.Timestamptz
+  updatedAt    DateTime         @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  // Relations
+  assignment Assignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  student    Profile    @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([assignmentId, studentId])
+  @@index([assignmentId])
+  @@index([studentId])
+  @@index([status])
+  @@index([assignmentId, status])
+  @@map("assignment_submissions")
 }
