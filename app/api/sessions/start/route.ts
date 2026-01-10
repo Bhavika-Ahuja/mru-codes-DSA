@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { getProfile } from "@/lib/supabase/server";
 import prisma from "@/lib/prisma";
 import { z } from "zod";
 
@@ -20,23 +20,14 @@ const startSessionSchema = z.object({
 // POST: Start a new session for a quiz (creates session and returns it)
 export async function POST(request: Request) {
   try {
-    const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+    const profile = await getProfile();
 
-    if (!user) {
+    if (!profile) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     // Verify teacher role
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("role")
-      .eq("id", user.id)
-      .single();
-
-    if (profile?.role !== "teacher") {
+    if (profile.role !== "teacher") {
       return NextResponse.json(
         { error: "Only teachers can start sessions" },
         { status: 403 }
@@ -59,7 +50,7 @@ export async function POST(request: Request) {
     const quiz = await prisma.quiz.findFirst({
       where: {
         id: quizId,
-        createdById: user.id,
+        createdById: profile.id,
       },
       include: {
         questions: {
@@ -98,7 +89,7 @@ export async function POST(request: Request) {
     const session = await prisma.quizSession.create({
       data: {
         quizId,
-        hostId: user.id,
+        hostId: profile.id,
         roomCode,
         status: "waiting",
         currentQuestionIndex: 0,
@@ -129,7 +120,10 @@ export async function POST(request: Request) {
   } catch (error) {
     console.error("Error starting session:", error);
     return NextResponse.json(
-      { error: "Failed to start session" },
+      { 
+        error: "Failed to start session",
+        details: error instanceof Error ? error.message : "Unknown error"
+      },
       { status: 500 }
     );
   }

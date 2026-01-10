@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { getProfile } from "@/lib/supabase/server";
 import prisma from "@/lib/prisma";
 import { z } from "zod";
 
@@ -21,23 +21,14 @@ const createSessionSchema = z.object({
 // POST: Create a new quiz session
 export async function POST(request: Request) {
   try {
-    const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+    const profile = await getProfile();
 
-    if (!user) {
+    if (!profile) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     // Verify teacher role
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("role")
-      .eq("id", user.id)
-      .single();
-
-    if (profile?.role !== "teacher") {
+    if (profile.role !== "teacher") {
       return NextResponse.json(
         { error: "Only teachers can create sessions" },
         { status: 403 }
@@ -60,7 +51,7 @@ export async function POST(request: Request) {
     const quiz = await prisma.quiz.findFirst({
       where: {
         id: quizId,
-        createdById: user.id,
+        createdById: profile.id,
       },
       include: {
         questions: {
@@ -93,7 +84,7 @@ export async function POST(request: Request) {
     const session = await prisma.quizSession.create({
       data: {
         quizId,
-        hostId: user.id,
+        hostId: profile.id,
         roomCode,
         status: "waiting",
         currentQuestionIndex: 0,

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { getProfile, createClient } from "@/lib/supabase/server";
 import prisma from "@/lib/prisma";
 
 // POST: Join a session as a student
@@ -9,23 +9,14 @@ export async function POST(
 ) {
   try {
     const { sessionId } = await params;
-    const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+    const profile = await getProfile();
 
-    if (!user) {
+    if (!profile) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     // Verify student role
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("role, full_name")
-      .eq("id", user.id)
-      .single();
-
-    if (profile?.role !== "student") {
+    if (profile.role !== "student") {
       return NextResponse.json(
         { error: "Only students can join sessions" },
         { status: 403 }
@@ -61,7 +52,7 @@ export async function POST(
       where: {
         sessionId_studentId: {
           sessionId,
-          studentId: user.id,
+          studentId: profile.id,
         },
       },
     });
@@ -82,7 +73,7 @@ export async function POST(
     const participant = await prisma.sessionParticipant.create({
       data: {
         sessionId,
-        studentId: user.id,
+        studentId: profile.id,
         sessionScore: 0,
         questionsAnswered: 0,
         correctAnswers: 0,
@@ -90,12 +81,13 @@ export async function POST(
     });
 
     // Broadcast join event via Supabase realtime
+    const supabase = await createClient();
     await supabase.channel(`quiz-session-${sessionId}`).send({
       type: "broadcast",
       event: "participant_join",
       payload: {
-        user_id: user.id,
-        full_name: profile.full_name,
+        user_id: profile.id,
+        full_name: profile.fullName,
       },
     });
 

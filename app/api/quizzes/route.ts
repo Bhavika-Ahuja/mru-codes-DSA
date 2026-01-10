@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { getProfile } from "@/lib/supabase/server";
 import prisma from "@/lib/prisma";
 import { z } from "zod";
 
@@ -31,22 +31,13 @@ const createQuizSchema = z.object({
 export async function POST(request: Request) {
   try {
     // Verify user is authenticated and is a teacher
-    const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+    const profile = await getProfile();
 
-    if (!user) {
+    if (!profile) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("role")
-      .eq("id", user.id)
-      .single();
-
-    if (profile?.role !== "teacher") {
+    if (profile.role !== "teacher") {
       return NextResponse.json(
         { error: "Only teachers can create quizzes" },
         { status: 403 }
@@ -76,7 +67,7 @@ export async function POST(request: Request) {
           topic: quiz.topic,
           difficulty: quiz.difficulty,
           timePerQuestion: quiz.timePerQuestion,
-          createdById: user.id,
+          createdById: profile.id,
           status: "draft",
           totalQuestions: questions.length,
         },
@@ -123,12 +114,9 @@ export async function POST(request: Request) {
 // GET: List quizzes for the current teacher
 export async function GET(request: Request) {
   try {
-    const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+    const profile = await getProfile();
 
-    if (!user) {
+    if (!profile) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -142,7 +130,7 @@ export async function GET(request: Request) {
       createdById: string;
       status?: "draft" | "published" | "archived";
     } = {
-      createdById: user.id,
+      createdById: profile.id,
     };
 
     if (status && ["draft", "published", "archived"].includes(status)) {
