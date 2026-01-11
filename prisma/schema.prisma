@@ -97,6 +97,7 @@ model Quiz {
   createdById     String          @map("created_by") @db.Uuid
   status          QuizStatus      @default(draft)
   totalQuestions  Int             @default(0) @map("total_questions")
+  geolocationEnabled Boolean       @default(false) @map("geolocation_enabled")
   createdAt       DateTime        @default(now()) @map("created_at") @db.Timestamptz
   updatedAt       DateTime        @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
 

@@ -20,6 +20,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
+import { StudentPerformanceDashboard } from "@/components/dashboard/student-performance-dashboard";
 
 export default async function StudentDashboardPage() {
   const profile = await getProfile();
@@ -188,6 +189,19 @@ export default async function StudentDashboardPage() {
             </Link>
           </CardContent>
         </Card>
+      </div>
+
+      {/* Performance Analytics */}
+      <div>
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h2 className="text-lg font-semibold">Performance Analytics</h2>
+            <p className="text-sm text-muted-foreground">
+              Track your performance with detailed charts and graphs
+            </p>
+          </div>
+        </div>
+        <StudentPerformanceDashboard />
       </div>
 
       {/* Learning Progress */}

@@ -308,9 +308,35 @@ export default function TeacherSessionPage() {
                   <h3 className="text-xl font-semibold mb-2">
                     Waiting for students
                   </h3>
-                  <p className="text-muted-foreground mb-6">
+                  <p className="text-muted-foreground mb-2">
                     {session.participants.length} students have joined
                   </p>
+                  {(() => {
+                    // Calculate section-wise counts
+                    const sectionCounts = session.participants.reduce(
+                      (acc, p) => {
+                        const section = p.student.section || "No Section";
+                        acc[section] = (acc[section] || 0) + 1;
+                        return acc;
+                      },
+                      {} as Record<string, number>
+                    );
+                    const sections = Object.keys(sectionCounts).sort();
+
+                    return sections.length > 0 ? (
+                      <div className="flex flex-wrap items-center justify-center gap-2 mb-6">
+                        {sections.map((section) => (
+                          <Badge
+                            key={section}
+                            variant="outline"
+                            className="text-xs"
+                          >
+                            {section}: {sectionCounts[section]}
+                          </Badge>
+                        ))}
+                      </div>
+                    ) : null;
+                  })()}
                   <Button
                     size="lg"
                     onClick={() => performAction("start")}
@@ -430,9 +456,35 @@ export default function TeacherSessionPage() {
                     <Trophy className="h-8 w-8 text-green-500" />
                   </div>
                   <h3 className="text-xl font-semibold mb-2">Quiz Completed!</h3>
-                  <p className="text-muted-foreground mb-6">
+                  <p className="text-muted-foreground mb-2">
                     {session.participants.length} students participated
                   </p>
+                  {(() => {
+                    // Calculate section-wise counts
+                    const sectionCounts = session.participants.reduce(
+                      (acc, p) => {
+                        const section = p.student.section || "No Section";
+                        acc[section] = (acc[section] || 0) + 1;
+                        return acc;
+                      },
+                      {} as Record<string, number>
+                    );
+                    const sections = Object.keys(sectionCounts).sort();
+
+                    return sections.length > 0 ? (
+                      <div className="flex flex-wrap items-center justify-center gap-2 mb-6">
+                        {sections.map((section) => (
+                          <Badge
+                            key={section}
+                            variant="outline"
+                            className="text-xs"
+                          >
+                            {section}: {sectionCounts[section]}
+                          </Badge>
+                        ))}
+                      </div>
+                    ) : null;
+                  })()}
                   <Button onClick={() => router.push("/teacher/quizzes")}>
                     Back to Quizzes
                   </Button>
@@ -477,9 +529,37 @@ export default function TeacherSessionPage() {
         <div className="space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Users className="h-5 w-5" />
-                Participants ({session.participants.length})
+              <CardTitle className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Users className="h-5 w-5" />
+                  Participants ({session.participants.length})
+                </div>
+                {(() => {
+                  // Calculate section-wise counts for header
+                  const sectionCounts = session.participants.reduce(
+                    (acc, p) => {
+                      const section = p.student.section || "No Section";
+                      acc[section] = (acc[section] || 0) + 1;
+                      return acc;
+                    },
+                    {} as Record<string, number>
+                  );
+                  const sections = Object.keys(sectionCounts).sort();
+
+                  return sections.length > 0 ? (
+                    <div className="flex flex-wrap gap-1">
+                      {sections.map((section) => (
+                        <Badge
+                          key={section}
+                          variant="secondary"
+                          className="text-xs"
+                        >
+                          {section}: {sectionCounts[section]}
+                        </Badge>
+                      ))}
+                    </div>
+                  ) : null;
+                })()}
               </CardTitle>
             </CardHeader>
             <CardContent className="p-0">
@@ -496,35 +576,79 @@ export default function TeacherSessionPage() {
                     </p>
                   </div>
                 ) : (
-                  <div className="p-4 space-y-2">
-                    {session.participants.map((p, index) => (
-                      <div
-                        key={p.id}
-                        className="flex items-center gap-3 p-3 rounded-lg bg-muted/50"
-                      >
-                        <span className="w-6 h-6 rounded-full bg-primary/10 text-primary flex items-center justify-center text-xs font-bold">
-                          {index + 1}
-                        </span>
-                        <Avatar className="h-8 w-8">
-                          <AvatarImage src={p.student.avatarUrl || undefined} />
-                          <AvatarFallback>
-                            {p.student.fullName.charAt(0)}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium truncate">
-                            {p.student.fullName}
-                          </p>
-                          <p className="text-xs text-muted-foreground">
-                            {p.correctAnswers}/{p.questionsAnswered} correct
-                          </p>
-                        </div>
-                        <div className="text-right">
-                          <p className="font-bold text-primary">{p.score}</p>
-                          <p className="text-xs text-muted-foreground">pts</p>
-                        </div>
-                      </div>
-                    ))}
+                  <div className="p-4 space-y-4">
+                    {(() => {
+                      // Group participants by section
+                      const groupedBySection = session.participants.reduce(
+                        (acc, p) => {
+                          const section = p.student.section || "No Section";
+                          if (!acc[section]) {
+                            acc[section] = [];
+                          }
+                          acc[section].push(p);
+                          return acc;
+                        },
+                        {} as Record<string, typeof session.participants>
+                      );
+
+                      const sections = Object.keys(groupedBySection).sort();
+
+                      return sections.map((section) => {
+                        const sectionParticipants = groupedBySection[section];
+                        return (
+                          <div key={section} className="space-y-2">
+                            <div className="flex items-center gap-2 px-2">
+                              <Badge variant="outline" className="text-xs">
+                                {section}
+                              </Badge>
+                              <span className="text-xs text-muted-foreground">
+                                {sectionParticipants.length}{" "}
+                                {sectionParticipants.length === 1
+                                  ? "student"
+                                  : "students"}
+                              </span>
+                            </div>
+                            <div className="space-y-2 pl-2 border-l-2 border-border/50">
+                              {sectionParticipants.map((p, index) => (
+                                <div
+                                  key={p.id}
+                                  className="flex items-center gap-3 p-3 rounded-lg bg-muted/50"
+                                >
+                                  <span className="w-6 h-6 rounded-full bg-primary/10 text-primary flex items-center justify-center text-xs font-bold">
+                                    {index + 1}
+                                  </span>
+                                  <Avatar className="h-8 w-8">
+                                    <AvatarImage
+                                      src={p.student.avatarUrl || undefined}
+                                    />
+                                    <AvatarFallback>
+                                      {p.student.fullName.charAt(0)}
+                                    </AvatarFallback>
+                                  </Avatar>
+                                  <div className="flex-1 min-w-0">
+                                    <p className="text-sm font-medium truncate">
+                                      {p.student.fullName}
+                                    </p>
+                                    <p className="text-xs text-muted-foreground">
+                                      {p.correctAnswers}/{p.questionsAnswered}{" "}
+                                      correct
+                                    </p>
+                                  </div>
+                                  <div className="text-right">
+                                    <p className="font-bold text-primary">
+                                      {p.score}
+                                    </p>
+                                    <p className="text-xs text-muted-foreground">
+                                      pts
+                                    </p>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        );
+                      });
+                    })()}
                   </div>
                 )}
               </ScrollArea>

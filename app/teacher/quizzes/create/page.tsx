@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -16,6 +16,9 @@ import {
   Wand2,
   GripVertical,
   AlertCircle,
+  Shuffle,
+  Copy,
+  RefreshCw,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -39,6 +42,8 @@ import {
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Switch } from "@/components/ui/switch";
+import { MapPin } from "lucide-react";
 import Link from "next/link";
 
 // Form schema for quiz metadata
@@ -48,6 +53,7 @@ const quizSchema = z.object({
   topic: z.string().min(2, "Topic is required"),
   difficulty: z.enum(["easy", "medium", "hard"]),
   timePerQuestion: z.number().min(10).max(300).default(30),
+  geolocationEnabled: z.boolean().default(false),
 });
 
 type QuizFormData = z.infer<typeof quizSchema>;
@@ -91,11 +97,14 @@ const DSA_TOPICS = [
 
 export default function CreateQuizPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const quizIdToLoad = searchParams.get("quizId");
   const [mode, setMode] = useState<"ai" | "manual" | null>(null);
   const [step, setStep] = useState<"form" | "review">("form");
   const [questions, setQuestions] = useState<Question[]>([]);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [isLoadingQuiz, setIsLoadingQuiz] = useState(false);
   const [quizData, setQuizData] = useState<QuizFormData | null>(null);
 
   const {
@@ -109,11 +118,189 @@ export default function CreateQuizPage() {
     defaultValues: {
       difficulty: "medium",
       timePerQuestion: 30,
+      geolocationEnabled: false,
     },
   });
 
   const selectedDifficulty = watch("difficulty");
   const selectedTopic = watch("topic");
+
+  // Load quiz for editing/cloning
+  useEffect(() => {
+    if (quizIdToLoad) {
+      loadQuiz(quizIdToLoad);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [quizIdToLoad]);
+
+  const loadQuiz = async (quizId: string) => {
+    setIsLoadingQuiz(true);
+    try {
+      const response = await fetch(`/api/quizzes/${quizId}`);
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to load quiz");
+      }
+
+      const quiz = data.quiz;
+      
+      // Set form values
+      setValue("title", quiz.title);
+      setValue("description", quiz.description || "");
+      setValue("topic", quiz.topic);
+      setValue("difficulty", quiz.difficulty);
+      setValue("timePerQuestion", quiz.timePerQuestion);
+      setValue("geolocationEnabled", quiz.geolocationEnabled || false);
+
+      // Transform questions
+      const loadedQuestions: Question[] = quiz.questions.map((q: any) => ({
+        id: `q-${Date.now()}-${q.id}`,
+        questionText: q.questionText,
+        options: (q.options as any[]).map((opt: any, optIndex: number) => ({
+          id: opt.id || String.fromCharCode(97 + optIndex),
+          text: opt.text,
+          isCorrect: opt.is_correct || false,
+        })),
+        explanation: q.explanation || "",
+      }));
+
+      setQuestions(loadedQuestions);
+      setQuizData({
+        title: quiz.title,
+        description: quiz.description,
+        topic: quiz.topic,
+        difficulty: quiz.difficulty,
+        timePerQuestion: quiz.timePerQuestion,
+        geolocationEnabled: quiz.geolocationEnabled || false,
+      });
+      setMode("manual");
+      setStep("review");
+      toast.success("Quiz loaded! You can now edit it.");
+    } catch (error) {
+      console.error("Error loading quiz:", error);
+      toast.error(error instanceof Error ? error.message : "Failed to load quiz");
+      router.push("/teacher/quizzes/create");
+    } finally {
+      setIsLoadingQuiz(false);
+    }
+  };
+
+  // Shuffle questions
+  const shuffleQuestions = () => {
+    setQuestions((prev) => {
+      const shuffled = [...prev];
+      for (let i = shuffled.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+      }
+      return shuffled;
+    });
+    toast.success("Questions shuffled!");
+  };
+
+  // Shuffle answer choices for a question
+  const shuffleAnswerChoices = (questionId: string) => {
+    setQuestions((prev) =>
+      prev.map((q) => {
+        if (q.id === questionId) {
+          const shuffled = [...q.options];
+          const correctOption = shuffled.find((opt) => opt.isCorrect);
+          
+          // Fisher-Yates shuffle
+          for (let i = shuffled.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+          }
+
+          // Keep track of which one is correct
+          if (correctOption) {
+            const correctIndex = shuffled.findIndex((opt) => opt.id === correctOption.id);
+            shuffled.forEach((opt, index) => {
+              opt.isCorrect = index === correctIndex;
+            });
+          }
+
+          return { ...q, options: shuffled };
+        }
+        return q;
+      })
+    );
+    toast.success("Answer choices shuffled!");
+  };
+
+  // Shuffle all answer choices
+  const shuffleAllAnswerChoices = () => {
+    setQuestions((prev) =>
+      prev.map((q) => {
+        const shuffled = [...q.options];
+        const correctOption = shuffled.find((opt) => opt.isCorrect);
+        
+        for (let i = shuffled.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+        }
+
+        if (correctOption) {
+          const correctIndex = shuffled.findIndex((opt) => opt.id === correctOption.id);
+          shuffled.forEach((opt, index) => {
+            opt.isCorrect = index === correctIndex;
+          });
+        }
+
+        return { ...q, options: shuffled };
+      })
+    );
+    toast.success("All answer choices shuffled!");
+  };
+
+  // Generate more questions using AI
+  const generateMoreQuestions = async (count: number = 3) => {
+    if (!quizData) {
+      toast.error("Please set quiz details first");
+      return;
+    }
+
+    setIsGenerating(true);
+    try {
+      const response = await fetch("/api/generate-quiz", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          topic: quizData.topic,
+          difficulty: quizData.difficulty,
+          count,
+        }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Failed to generate questions");
+      }
+
+      const result = await response.json();
+      const generatedQuestions: Question[] = result.questions.map(
+        (q: { question_text: string; options: { text: string; is_correct: boolean }[]; explanation: string }, index: number) => ({
+          id: `q-${Date.now()}-${index}`,
+          questionText: q.question_text,
+          options: q.options.map((opt: { text: string; is_correct: boolean }, optIndex: number) => ({
+            id: String.fromCharCode(97 + optIndex),
+            text: opt.text,
+            isCorrect: opt.is_correct,
+          })),
+          explanation: q.explanation || "",
+        })
+      );
+
+      setQuestions((prev) => [...prev, ...generatedQuestions]);
+      toast.success(`${count} questions generated and added!`);
+    } catch (error) {
+      console.error("Error generating questions:", error);
+      toast.error(error instanceof Error ? error.message : "Failed to generate questions");
+    } finally {
+      setIsGenerating(false);
+    }
+  };
 
   // Generate questions using AI
   const generateQuestions = async (data: QuizFormData) => {
@@ -278,6 +465,7 @@ export default function CreateQuizPage() {
             topic: quizData.topic,
             difficulty: quizData.difficulty,
             timePerQuestion: quizData.timePerQuestion,
+            geolocationEnabled: quizData.geolocationEnabled || false,
           },
           questions: questions.map((q, index) => ({
             questionText: q.questionText,
@@ -320,8 +508,17 @@ export default function CreateQuizPage() {
     }
   };
 
+  // Loading quiz
+  if (isLoadingQuiz) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
   // Mode selection screen
-  if (mode === null) {
+  if (mode === null && !quizIdToLoad) {
     return (
       <div className="max-w-4xl mx-auto space-y-6">
         {/* Header */}
@@ -586,6 +783,23 @@ export default function CreateQuizPage() {
                 />
               </div>
 
+              <div className="flex items-center justify-between p-4 border rounded-lg bg-muted/50">
+                <div className="space-y-0.5">
+                  <Label htmlFor="geolocationEnabled" className="flex items-center gap-2 cursor-pointer">
+                    <MapPin className="h-4 w-4 text-primary" />
+                    Require Campus Location
+                  </Label>
+                  <p className="text-sm text-muted-foreground">
+                    Students must be on Manav Rachna University campus to join
+                  </p>
+                </div>
+                <Switch
+                  id="geolocationEnabled"
+                  checked={watch("geolocationEnabled")}
+                  onCheckedChange={(checked) => setValue("geolocationEnabled", checked)}
+                />
+              </div>
+
               <div className="pt-4 flex gap-3">
                 {mode === "ai" ? (
                   <Button
@@ -639,30 +853,70 @@ export default function CreateQuizPage() {
           {quizData && (
             <Card className="border-primary/20 bg-primary/5">
               <CardContent className="pt-6">
-                <div className="flex flex-wrap items-center gap-4">
-                  <div>
-                    <p className="text-sm text-muted-foreground">Quiz Title</p>
-                    <p className="font-semibold">{quizData.title}</p>
+                <div className="flex flex-wrap items-center justify-between gap-4">
+                  <div className="flex flex-wrap items-center gap-4">
+                    <div>
+                      <p className="text-sm text-muted-foreground">Quiz Title</p>
+                      <p className="font-semibold">{quizData.title}</p>
+                    </div>
+                    <div className="h-8 w-px bg-border" />
+                    <div>
+                      <p className="text-sm text-muted-foreground">Topic</p>
+                      <p className="font-semibold">{quizData.topic}</p>
+                    </div>
+                    <div className="h-8 w-px bg-border" />
+                    <div>
+                      <p className="text-sm text-muted-foreground">Difficulty</p>
+                      <Badge
+                        variant="outline"
+                        className={getDifficultyColor(quizData.difficulty)}
+                      >
+                        {quizData.difficulty}
+                      </Badge>
+                    </div>
+                    <div className="h-8 w-px bg-border" />
+                    <div>
+                      <p className="text-sm text-muted-foreground">Questions</p>
+                      <p className="font-semibold">{questions.length}</p>
+                    </div>
                   </div>
-                  <div className="h-8 w-px bg-border" />
-                  <div>
-                    <p className="text-sm text-muted-foreground">Topic</p>
-                    <p className="font-semibold">{quizData.topic}</p>
-                  </div>
-                  <div className="h-8 w-px bg-border" />
-                  <div>
-                    <p className="text-sm text-muted-foreground">Difficulty</p>
-                    <Badge
+                  
+                  {/* Smart Actions */}
+                  <div className="flex flex-wrap gap-2">
+                    <Button
                       variant="outline"
-                      className={getDifficultyColor(quizData.difficulty)}
+                      size="sm"
+                      onClick={shuffleQuestions}
+                      disabled={questions.length < 2}
+                      className="gap-2"
                     >
-                      {quizData.difficulty}
-                    </Badge>
-                  </div>
-                  <div className="h-8 w-px bg-border" />
-                  <div>
-                    <p className="text-sm text-muted-foreground">Questions</p>
-                    <p className="font-semibold">{questions.length}</p>
+                      <Shuffle className="h-4 w-4" />
+                      Shuffle Questions
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={shuffleAllAnswerChoices}
+                      disabled={questions.length === 0}
+                      className="gap-2"
+                    >
+                      <Shuffle className="h-4 w-4" />
+                      Shuffle All Answers
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => generateMoreQuestions(3)}
+                      disabled={isGenerating || !quizData}
+                      className="gap-2"
+                    >
+                      {isGenerating ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Sparkles className="h-4 w-4" />
+                      )}
+                      Add 3 More (AI)
+                    </Button>
                   </div>
                 </div>
               </CardContent>
@@ -708,7 +962,18 @@ export default function CreateQuizPage() {
 
                   {/* Options */}
                   <div className="space-y-3">
-                    <Label>Options (select the correct answer)</Label>
+                    <div className="flex items-center justify-between">
+                      <Label>Options (select the correct answer)</Label>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => shuffleAnswerChoices(question.id)}
+                        className="h-7 text-xs gap-1"
+                      >
+                        <Shuffle className="h-3 w-3" />
+                        Shuffle
+                      </Button>
+                    </div>
                     <RadioGroup
                       value={question.options.find((o) => o.isCorrect)?.id || ""}
                       onValueChange={(value) =>

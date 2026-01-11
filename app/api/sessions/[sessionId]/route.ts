@@ -82,6 +82,7 @@ export async function GET(
           quiz: {
             title: session.quiz.title,
             topic: session.quiz.topic,
+            geolocationEnabled: session.quiz.geolocationEnabled,
           },
           host: session.host,
           participantCount: session.participants.length,
@@ -164,6 +165,7 @@ export async function GET(
           difficulty: session.quiz.difficulty,
           timePerQuestion: session.quiz.timePerQuestion,
           totalQuestions: session.quiz.questions.length,
+          geolocationEnabled: session.quiz.geolocationEnabled,
         },
         host: session.host,
         currentQuestion,

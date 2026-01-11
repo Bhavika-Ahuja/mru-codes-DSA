@@ -133,6 +133,7 @@ export async function GET(request: Request) {
             difficulty: true,
             timePerQuestion: true,
             totalQuestions: true,
+            geolocationEnabled: true,
           },
         },
         host: {

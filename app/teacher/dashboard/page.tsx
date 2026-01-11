@@ -19,6 +19,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { TeacherPerformanceDashboard } from "@/components/dashboard/teacher-performance-dashboard";
 
 export default async function TeacherDashboardPage() {
   const profile = await getProfile();
@@ -183,6 +184,19 @@ export default async function TeacherDashboardPage() {
             </CardContent>
           </Card>
         </div>
+      </div>
+
+      {/* Performance Analytics */}
+      <div>
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h2 className="text-lg font-semibold">Performance Analytics</h2>
+            <p className="text-sm text-muted-foreground">
+              Track student performance across all metrics, sections, and individuals
+            </p>
+          </div>
+        </div>
+        <TeacherPerformanceDashboard />
       </div>
 
       {/* Recent Activity Placeholder */}

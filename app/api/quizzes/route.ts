@@ -11,6 +11,7 @@ const createQuizSchema = z.object({
     topic: z.string().min(2),
     difficulty: z.enum(["easy", "medium", "hard"]),
     timePerQuestion: z.number().min(10).max(300).default(30),
+    geolocationEnabled: z.boolean().optional().default(false),
   }),
   questions: z.array(
     z.object({
@@ -67,6 +68,7 @@ export async function POST(request: Request) {
           topic: quiz.topic,
           difficulty: quiz.difficulty,
           timePerQuestion: quiz.timePerQuestion,
+          geolocationEnabled: quiz.geolocationEnabled || false,
           createdById: profile.id,
           status: "draft",
           totalQuestions: questions.length,

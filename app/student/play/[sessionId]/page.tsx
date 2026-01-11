@@ -11,6 +11,7 @@ import {
   X,
   Hourglass,
   PartyPopper,
+  MapPin,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -51,6 +52,7 @@ interface SessionData {
     difficulty: string;
     timePerQuestion: number;
     totalQuestions: number;
+    geolocationEnabled?: boolean;
   };
   host: {
     id: string;
@@ -200,13 +202,51 @@ export default function StudentPlayPage() {
   const joinSession = async () => {
     setIsJoining(true);
     try {
+      // Check if geolocation is required
+      let locationData: { latitude?: number; longitude?: number } = {};
+      
+      if (session?.quiz.geolocationEnabled) {
+        try {
+          const position = await new Promise<GeolocationPosition>((resolve, reject) => {
+            if (!navigator.geolocation) {
+              reject(new Error("Geolocation is not supported by your browser"));
+              return;
+            }
+
+            navigator.geolocation.getCurrentPosition(
+              resolve,
+              reject,
+              { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+            );
+          });
+
+          locationData = {
+            latitude: position.coords.latitude,
+            longitude: position.coords.longitude,
+          };
+        } catch (locationError) {
+          throw new Error(
+            locationError instanceof Error
+              ? locationError.message
+              : "Failed to get your location. Please enable location access and try again."
+          );
+        }
+      }
+
       const response = await fetch(`/api/sessions/${sessionId}/join`, {
         method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(locationData),
       });
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || "Failed to join session");
+        if (data.requiresLocation) {
+          throw new Error(
+            data.message || "Location access is required to join this quiz"
+          );
+        }
+        throw new Error(data.error || data.message || "Failed to join session");
       }
 
       setHasJoined(true);
@@ -317,7 +357,23 @@ export default function StudentPlayPage() {
               <Badge variant="outline">
                 {session.participantCount} joined
               </Badge>
+              {session.quiz.geolocationEnabled && (
+                <Badge variant="outline" className="bg-amber-500/10 text-amber-600 border-amber-500/20">
+                  <MapPin className="h-3 w-3 mr-1" />
+                  Campus Only
+                </Badge>
+              )}
             </div>
+            {session.quiz.geolocationEnabled && (
+              <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-lg">
+                <p className="text-sm text-amber-700 dark:text-amber-400 flex items-center gap-2">
+                  <MapPin className="h-4 w-4" />
+                  <span>
+                    Location access required. You must be on Manav Rachna University campus to join.
+                  </span>
+                </p>
+              </div>
+            )}
             <Button
               size="lg"
               className="w-full"

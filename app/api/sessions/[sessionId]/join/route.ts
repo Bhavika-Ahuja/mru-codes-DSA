@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getProfile, createClient } from "@/lib/supabase/server";
 import prisma from "@/lib/prisma";
+import { isWithinCampus } from "@/lib/geolocation";
 
 // POST: Join a session as a student
 export async function POST(
@@ -23,12 +24,12 @@ export async function POST(
       );
     }
 
-    // Get the session
+    // Get the session with quiz details
     const session = await prisma.quizSession.findUnique({
       where: { id: sessionId },
       include: {
         quiz: {
-          select: { title: true },
+          select: { title: true, geolocationEnabled: true },
         },
       },
     });
@@ -45,6 +46,33 @@ export async function POST(
         { error: "This session has already ended" },
         { status: 400 }
       );
+    }
+
+    // Check geolocation if enabled
+    if (session.quiz.geolocationEnabled) {
+      const body = await request.json().catch(() => ({}));
+      const { latitude, longitude } = body;
+
+      if (!latitude || !longitude) {
+        return NextResponse.json(
+          { 
+            error: "Location required", 
+            requiresLocation: true,
+            message: "This quiz requires you to be on campus. Please enable location access."
+          },
+          { status: 400 }
+        );
+      }
+
+      if (!isWithinCampus(latitude, longitude)) {
+        return NextResponse.json(
+          { 
+            error: "Location not within campus",
+            message: "You must be on Manav Rachna University campus to join this quiz."
+          },
+          { status: 403 }
+        );
+      }
     }
 
     // Check if already joined

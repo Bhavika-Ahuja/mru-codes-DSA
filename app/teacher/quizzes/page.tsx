@@ -13,6 +13,9 @@ import {
   Clock,
   FileText,
   Loader2,
+  Copy,
+  Shuffle,
+  Wand2,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -94,6 +97,31 @@ export default function TeacherQuizzesPage() {
       );
     } finally {
       setStartingQuizId(null);
+    }
+  };
+
+  const cloneQuiz = async (quizId: string) => {
+    try {
+      const response = await fetch(`/api/quizzes/${quizId}/clone`, {
+        method: "POST",
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to clone quiz");
+      }
+
+      toast.success("Quiz cloned successfully!");
+      // Navigate to create page with cloned quiz ID
+      router.push(`/teacher/quizzes/create?quizId=${data.quiz.id}`);
+      // Refresh the quiz list
+      fetchQuizzes();
+    } catch (error) {
+      console.error("Error cloning quiz:", error);
+      toast.error(
+        error instanceof Error ? error.message : "Failed to clone quiz"
+      );
     }
   };
 
@@ -269,6 +297,11 @@ export default function TeacherQuizzesPage() {
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => cloneQuiz(quiz.id)}>
+                          <Copy className="h-4 w-4 mr-2" />
+                          Clone Quiz
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
                         <DropdownMenuItem>
                           <Edit className="h-4 w-4 mr-2" />
                           Edit Quiz
