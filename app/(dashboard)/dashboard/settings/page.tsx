@@ -14,6 +14,8 @@ import {
   Loader2,
   AlertCircle,
   CheckCircle2,
+  Shield,
+  Settings as SettingsIcon,
 } from "lucide-react";
 import {
   Card,
@@ -25,6 +27,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Separator } from "@/components/ui/separator";
 import { useUser } from "@/providers/user-provider";
 import { toast } from "sonner";
 
@@ -97,9 +100,14 @@ export default function SettingsPage() {
       });
       router.refresh();
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Failed to update profile", {
-        icon: <AlertCircle className="h-4 w-4" />,
-      });
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Failed to update profile",
+        {
+          icon: <AlertCircle className="h-4 w-4" />,
+        }
+      );
     } finally {
       setIsLoading(false);
     }
@@ -124,109 +132,170 @@ export default function SettingsPage() {
       </div>
 
       <form onSubmit={handleSubmit(onSubmit)}>
-        <Card>
-          <CardHeader>
-            <CardTitle>Profile Information</CardTitle>
-            <CardDescription>
-              Update your profile details. Changes will be saved to your account.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            {/* Full Name */}
-            <div className="space-y-2">
-              <Label htmlFor="fullName" className="flex items-center gap-2">
-                <User className="h-4 w-4 text-muted-foreground" />
-                Full Name
-              </Label>
-              <Input
-                id="fullName"
-                placeholder="Enter your full name"
-                {...register("fullName")}
-                disabled={isLoading}
-              />
-              {errors.fullName && (
-                <p className="text-sm text-destructive flex items-center gap-1">
-                  <AlertCircle className="h-3 w-3" />
-                  {errors.fullName.message}
-                </p>
-              )}
-            </div>
+        <div className="grid gap-6 lg:grid-cols-3">
+          {/* Settings Navigation Sidebar (for future expansion) */}
+          <div className="lg:col-span-1">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-lg">
+                  <SettingsIcon className="h-5 w-5" />
+                  Settings
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-1">
+                <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-primary/5 border border-primary/20">
+                  <User className="h-4 w-4 text-primary" />
+                  <span className="text-sm font-medium">Profile</span>
+                </div>
+                {/* Future settings sections can be added here */}
+              </CardContent>
+            </Card>
+          </div>
 
-            {/* Email (Read-only) */}
-            <div className="space-y-2">
-              <Label htmlFor="email" className="flex items-center gap-2">
-                <Mail className="h-4 w-4 text-muted-foreground" />
-                Email Address
-              </Label>
-              <Input
-                id="email"
-                type="email"
-                value={profile.email}
-                disabled
-                className="bg-muted cursor-not-allowed"
-              />
-              <p className="text-xs text-muted-foreground">
-                Email cannot be changed. Contact support if you need to update
-                your email.
-              </p>
-            </div>
+          {/* Main Settings Form */}
+          <div className="lg:col-span-2 space-y-6">
+            {/* Profile Information */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <User className="h-5 w-5" />
+                  Profile Information
+                </CardTitle>
+                <CardDescription>
+                  Update your profile details. Changes will be saved to your
+                  account.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                {/* Full Name */}
+                <div className="space-y-2">
+                  <Label htmlFor="fullName" className="flex items-center gap-2">
+                    <User className="h-4 w-4 text-muted-foreground" />
+                    Full Name
+                  </Label>
+                  <Input
+                    id="fullName"
+                    placeholder="Enter your full name"
+                    {...register("fullName")}
+                    disabled={isLoading}
+                    className="h-11"
+                  />
+                  {errors.fullName && (
+                    <p className="text-sm text-destructive flex items-center gap-1">
+                      <AlertCircle className="h-3 w-3" />
+                      {errors.fullName.message}
+                    </p>
+                  )}
+                </div>
 
-            {/* Roll Number */}
-            <div className="space-y-2">
-              <Label htmlFor="rollNumber" className="flex items-center gap-2">
-                <Hash className="h-4 w-4 text-muted-foreground" />
-                Roll Number
-              </Label>
-              <Input
-                id="rollNumber"
-                placeholder="Enter your roll number (optional)"
-                {...register("rollNumber")}
-                disabled={isLoading}
-              />
-              {errors.rollNumber && (
-                <p className="text-sm text-destructive flex items-center gap-1">
-                  <AlertCircle className="h-3 w-3" />
-                  {errors.rollNumber.message}
-                </p>
-              )}
-            </div>
+                <Separator />
 
-            {/* Section */}
-            <div className="space-y-2">
-              <Label htmlFor="section" className="flex items-center gap-2">
-                <Building2 className="h-4 w-4 text-muted-foreground" />
-                Section
-              </Label>
-              <Input
-                id="section"
-                placeholder="Enter your section (optional)"
-                {...register("section")}
-                disabled={isLoading}
-              />
-              {errors.section && (
-                <p className="text-sm text-destructive flex items-center gap-1">
-                  <AlertCircle className="h-3 w-3" />
-                  {errors.section.message}
-                </p>
-              )}
-            </div>
+                {/* Email (Read-only) */}
+                <div className="space-y-2">
+                  <Label htmlFor="email" className="flex items-center gap-2">
+                    <Mail className="h-4 w-4 text-muted-foreground" />
+                    Email Address
+                  </Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    value={profile.email}
+                    disabled
+                    className="bg-muted cursor-not-allowed h-11"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Email cannot be changed. Contact support if you need to
+                    update your email.
+                  </p>
+                </div>
 
-            {/* Role (Read-only) */}
-            <div className="space-y-2">
-              <Label>Role</Label>
-              <Input
-                value={profile.role === "teacher" ? "Teacher" : "Student"}
-                disabled
-                className="bg-muted cursor-not-allowed capitalize"
-              />
-              <p className="text-xs text-muted-foreground">
-                Your role cannot be changed.
-              </p>
-            </div>
+                <Separator />
+
+                {/* Roll Number */}
+                <div className="space-y-2">
+                  <Label
+                    htmlFor="rollNumber"
+                    className="flex items-center gap-2"
+                  >
+                    <Hash className="h-4 w-4 text-muted-foreground" />
+                    Roll Number
+                  </Label>
+                  <Input
+                    id="rollNumber"
+                    placeholder="Enter your roll number (optional)"
+                    {...register("rollNumber")}
+                    disabled={isLoading}
+                    className="h-11"
+                  />
+                  {errors.rollNumber && (
+                    <p className="text-sm text-destructive flex items-center gap-1">
+                      <AlertCircle className="h-3 w-3" />
+                      {errors.rollNumber.message}
+                    </p>
+                  )}
+                </div>
+
+                <Separator />
+
+                {/* Section */}
+                <div className="space-y-2">
+                  <Label htmlFor="section" className="flex items-center gap-2">
+                    <Building2 className="h-4 w-4 text-muted-foreground" />
+                    Section
+                  </Label>
+                  <Input
+                    id="section"
+                    placeholder="Enter your section (optional)"
+                    {...register("section")}
+                    disabled={isLoading}
+                    className="h-11"
+                  />
+                  {errors.section && (
+                    <p className="text-sm text-destructive flex items-center gap-1">
+                      <AlertCircle className="h-3 w-3" />
+                      {errors.section.message}
+                    </p>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Account Details */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Shield className="h-5 w-5" />
+                  Account Details
+                </CardTitle>
+                <CardDescription>
+                  Information about your account that cannot be changed.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex items-center justify-between py-2">
+                  <div>
+                    <Label>Role</Label>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Your account type
+                    </p>
+                  </div>
+                  <Input
+                    value={profile.role === "teacher" ? "Teacher" : "Student"}
+                    disabled
+                    className="bg-muted cursor-not-allowed w-32 capitalize h-10"
+                  />
+                </div>
+              </CardContent>
+            </Card>
 
             {/* Submit Button */}
-            <div className="flex justify-end pt-4 border-t">
-              <Button type="submit" disabled={isLoading || !isDirty} className="gap-2">
+            <div className="flex justify-end">
+              <Button
+                type="submit"
+                disabled={isLoading || !isDirty}
+                className="gap-2 min-w-[140px]"
+                size="lg"
+              >
                 {isLoading ? (
                   <>
                     <Loader2 className="h-4 w-4 animate-spin" />
@@ -240,10 +309,9 @@ export default function SettingsPage() {
                 )}
               </Button>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       </form>
     </div>
   );
 }
-

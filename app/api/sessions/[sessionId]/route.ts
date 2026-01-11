@@ -110,7 +110,7 @@ export async function GET(
             title: session.quiz.title,
             topic: session.quiz.topic,
             difficulty: session.quiz.difficulty,
-            timePerQuestion: session.quiz.timePerQuestion,
+            timeLimit: session.quiz.timeLimit,
             totalQuestions: session.quiz.questions.length,
             questions: session.quiz.questions.map((q) => ({
               id: q.id,
@@ -159,11 +159,12 @@ export async function GET(
         status: session.status,
         currentQuestionIndex: session.currentQuestionIndex,
         questionStartedAt: session.questionStartedAt?.toISOString(),
+        startedAt: session.startedAt?.toISOString(),
         quiz: {
           title: session.quiz.title,
           topic: session.quiz.topic,
           difficulty: session.quiz.difficulty,
-          timePerQuestion: session.quiz.timePerQuestion,
+          timeLimit: session.quiz.timeLimit,
           totalQuestions: session.quiz.questions.length,
           geolocationEnabled: session.quiz.geolocationEnabled,
         },

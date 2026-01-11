@@ -131,7 +131,7 @@ export async function GET(request: Request) {
             title: true,
             topic: true,
             difficulty: true,
-            timePerQuestion: true,
+            timeLimit: true,
             totalQuestions: true,
             geolocationEnabled: true,
           },

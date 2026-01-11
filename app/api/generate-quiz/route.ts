@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { GoogleGenerativeAI } from "@google/generative-ai";
-import { createClient } from "@/lib/supabase/server";
+import { getProfile } from "@/lib/supabase/server";
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
 
@@ -16,22 +16,13 @@ interface GeneratedQuestion {
 export async function POST(request: Request) {
   try {
     // Verify user is authenticated and is a teacher
-    const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+    const profile = await getProfile();
 
-    if (!user) {
+    if (!profile) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("role")
-      .eq("id", user.id)
-      .single();
-
-    if (profile?.role !== "teacher") {
+    if (profile.role !== "teacher") {
       return NextResponse.json(
         { error: "Only teachers can generate questions" },
         { status: 403 }
@@ -83,7 +74,7 @@ Return ONLY a valid JSON object with this exact structure (no markdown, no code 
 }`;
 
     const model = genAI.getGenerativeModel({
-      model: "gemini-1.5-flash",
+      model: "gemini-2.5-flash",
       generationConfig: {
         responseMimeType: "application/json",
         temperature: 0.8,

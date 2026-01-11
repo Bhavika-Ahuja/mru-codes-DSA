@@ -46,11 +46,12 @@ interface SessionData {
   status: "waiting" | "live" | "completed";
   currentQuestionIndex: number;
   questionStartedAt: string | null;
+  startedAt: string | null;
   quiz: {
     title: string;
     topic: string;
     difficulty: string;
-    timePerQuestion: number;
+    timeLimit: number;
     totalQuestions: number;
     geolocationEnabled?: boolean;
   };
@@ -170,33 +171,37 @@ export default function StudentPlayPage() {
     };
   }, [sessionId, supabase, fetchSession]);
 
-  // Timer countdown
+  // Timer countdown - total quiz time
   useEffect(() => {
     if (
       !session ||
       session.status !== "live" ||
-      !session.questionStartedAt ||
-      hasAnswered
+      !session.startedAt
     ) {
-      if (!hasAnswered) setTimeRemaining(0);
+      setTimeRemaining(0);
       return;
     }
 
-    const startTime = new Date(session.questionStartedAt).getTime();
-    const duration = session.quiz.timePerQuestion * 1000;
+    const startTime = new Date(session.startedAt).getTime();
+    const duration = session.quiz.timeLimit * 1000; // Total quiz time in milliseconds
 
     const updateTime = () => {
       const now = Date.now();
       const elapsed = now - startTime;
       const remaining = Math.max(0, Math.ceil((duration - elapsed) / 1000));
       setTimeRemaining(remaining);
+      
+      // Auto-end quiz when time runs out (this will be handled by the teacher)
+      if (remaining === 0) {
+        setTimeRemaining(0);
+      }
     };
 
     updateTime();
     const interval = setInterval(updateTime, 1000);
 
     return () => clearInterval(interval);
-  }, [session, hasAnswered]);
+  }, [session]);
 
   // Join session
   const joinSession = async () => {
@@ -276,7 +281,7 @@ export default function StudentPlayPage() {
         body: JSON.stringify({
           questionId: session.currentQuestion.id,
           selectedOptionId: selectedOption,
-          timeTaken: session.quiz.timePerQuestion - timeRemaining,
+          timeTaken: session.quiz.timeLimit - timeRemaining,
         }),
       });
 
@@ -346,9 +351,9 @@ export default function StudentPlayPage() {
               </div>
               <div className="p-4 bg-muted/50 rounded-lg">
                 <p className="text-2xl font-bold">
-                  {session.quiz.timePerQuestion}s
+                  {Math.floor(session.quiz.timeLimit / 60)}m
                 </p>
-                <p className="text-sm text-muted-foreground">Per Question</p>
+                <p className="text-sm text-muted-foreground">Time Limit</p>
               </div>
             </div>
             <div className="flex flex-wrap gap-2 justify-center">
@@ -491,8 +496,8 @@ export default function StudentPlayPage() {
 
       {/* Timer progress */}
       <Progress
-        value={(timeRemaining / session.quiz.timePerQuestion) * 100}
-        className={`h-2 ${timeRemaining <= 5 ? "[&>div]:bg-red-500" : ""}`}
+        value={(timeRemaining / session.quiz.timeLimit) * 100}
+        className={`h-2 ${timeRemaining <= 60 ? "[&>div]:bg-red-500" : ""}`}
       />
 
       {/* Question Card */}

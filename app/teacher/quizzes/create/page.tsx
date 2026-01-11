@@ -52,7 +52,7 @@ const quizSchema = z.object({
   description: z.string().optional(),
   topic: z.string().min(2, "Topic is required"),
   difficulty: z.enum(["easy", "medium", "hard"]),
-  timePerQuestion: z.number().min(10).max(300).default(30),
+  timeLimit: z.number().min(60).max(3600).default(900),
   geolocationEnabled: z.boolean().default(false),
 });
 
@@ -117,13 +117,14 @@ export default function CreateQuizPage() {
     resolver: zodResolver(quizSchema),
     defaultValues: {
       difficulty: "medium",
-      timePerQuestion: 30,
+      timeLimit: 900,
       geolocationEnabled: false,
     },
   });
 
   const selectedDifficulty = watch("difficulty");
   const selectedTopic = watch("topic");
+  const timeLimitMinutes = Math.floor((watch("timeLimit") || 900) / 60);
 
   // Load quiz for editing/cloning
   useEffect(() => {
@@ -150,7 +151,7 @@ export default function CreateQuizPage() {
       setValue("description", quiz.description || "");
       setValue("topic", quiz.topic);
       setValue("difficulty", quiz.difficulty);
-      setValue("timePerQuestion", quiz.timePerQuestion);
+      setValue("timeLimit", quiz.timeLimit);
       setValue("geolocationEnabled", quiz.geolocationEnabled || false);
 
       // Transform questions
@@ -171,7 +172,7 @@ export default function CreateQuizPage() {
         description: quiz.description,
         topic: quiz.topic,
         difficulty: quiz.difficulty,
-        timePerQuestion: quiz.timePerQuestion,
+        timeLimit: quiz.timeLimit,
         geolocationEnabled: quiz.geolocationEnabled || false,
       });
       setMode("manual");
@@ -464,7 +465,7 @@ export default function CreateQuizPage() {
             description: quizData.description,
             topic: quizData.topic,
             difficulty: quizData.difficulty,
-            timePerQuestion: quizData.timePerQuestion,
+            timeLimit: quizData.timeLimit,
             geolocationEnabled: quizData.geolocationEnabled || false,
           },
           questions: questions.map((q, index) => ({
@@ -756,7 +757,7 @@ export default function CreateQuizPage() {
                         key={level}
                         type="button"
                         onClick={() => setValue("difficulty", level)}
-                        className={`flex-1 py-2.5 px-4 rounded-lg border-2 text-sm font-medium capitalize transition-all ${
+                        className={`flex-1 py-2.5 px-4 rounded-lg border-2 text-sm font-medium capitalize transition-all cursor-pointer ${
                           selectedDifficulty === level
                             ? getDifficultyColor(level) + " border-current"
                             : "border-border/50 hover:border-primary/30"
@@ -770,17 +771,26 @@ export default function CreateQuizPage() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="timePerQuestion">
-                  Time per Question (seconds)
+                <Label htmlFor="timeLimit">
+                  Quiz Time Limit (minutes)
                 </Label>
                 <Input
-                  id="timePerQuestion"
+                  id="timeLimit"
                   type="number"
-                  min={10}
-                  max={300}
+                  min={1}
+                  max={60}
+                  step={1}
                   className="h-11 w-32"
-                  {...register("timePerQuestion", { valueAsNumber: true })}
+                  value={timeLimitMinutes}
+                  onChange={(e) => {
+                    const minutes = parseFloat(e.target.value) || 15;
+                    const seconds = Math.round(minutes * 60);
+                    setValue("timeLimit", seconds, { shouldValidate: true });
+                  }}
                 />
+                <p className="text-xs text-muted-foreground">
+                  Total time for the entire quiz (default: 15 minutes)
+                </p>
               </div>
 
               <div className="flex items-center justify-between p-4 border rounded-lg bg-muted/50">

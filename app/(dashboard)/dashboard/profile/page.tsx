@@ -9,6 +9,8 @@ import {
   Calendar,
   Award,
   Edit,
+  Shield,
+  Clock,
 } from "lucide-react";
 import {
   Card,
@@ -20,8 +22,10 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Separator } from "@/components/ui/separator";
 import Link from "next/link";
-// Format date helper (without date-fns dependency)
+
+// Format date helper
 function formatDistanceToNow(date: Date): string {
   const now = new Date();
   const diffMs = now.getTime() - date.getTime();
@@ -77,7 +81,7 @@ export default async function ProfilePage() {
           </p>
         </div>
         <Link href="/dashboard/settings">
-          <Button variant="outline" className="gap-2">
+          <Button className="gap-2">
             <Edit className="h-4 w-4" />
             Edit Profile
           </Button>
@@ -85,124 +89,192 @@ export default async function ProfilePage() {
       </div>
 
       <div className="grid gap-6 lg:grid-cols-3">
-        {/* Profile Card */}
+        {/* Profile Overview Card */}
         <Card className="lg:col-span-1">
           <CardHeader className="text-center pb-4">
             <div className="flex justify-center mb-4">
-              <Avatar className="h-24 w-24 border-4 border-background shadow-lg">
-                <AvatarImage
-                  src={profile.avatarUrl || undefined}
-                  alt={profile.fullName}
-                />
-                <AvatarFallback className="bg-primary/10 text-primary text-2xl">
-                  {initials}
-                </AvatarFallback>
-              </Avatar>
+              <div className="relative">
+                <Avatar className="h-32 w-32 border-4 border-background shadow-lg">
+                  <AvatarImage
+                    src={profile.avatarUrl || undefined}
+                    alt={profile.fullName}
+                  />
+                  <AvatarFallback className="bg-primary/10 text-primary text-3xl font-semibold">
+                    {initials}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="absolute bottom-0 right-0 p-2 bg-background rounded-full border-4 border-background shadow-md">
+                  <div
+                    className={`h-3 w-3 rounded-full ${
+                      isTeacher ? "bg-primary" : "bg-green-500"
+                    }`}
+                  />
+                </div>
+              </div>
             </div>
-            <CardTitle className="text-xl">{profile.fullName}</CardTitle>
-            <CardDescription className="text-sm">
+            <CardTitle className="text-2xl">{profile.fullName}</CardTitle>
+            <CardDescription className="mt-2">
               <Badge
                 variant={isTeacher ? "default" : "secondary"}
-                className="mt-2"
+                className="text-sm px-3 py-1"
               >
                 {isTeacher ? "Teacher" : "Student"}
               </Badge>
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="flex items-center gap-3 text-sm">
-              <Mail className="h-4 w-4 text-muted-foreground" />
-              <span className="text-muted-foreground">{profile.email}</span>
-            </div>
-            {profile.rollNumber && (
+            <Separator />
+            <div className="space-y-3">
               <div className="flex items-center gap-3 text-sm">
-                <Hash className="h-4 w-4 text-muted-foreground" />
-                <span className="text-muted-foreground">
-                  {profile.rollNumber}
+                <Mail className="h-4 w-4 text-muted-foreground shrink-0" />
+                <span className="text-muted-foreground truncate">
+                  {profile.email}
                 </span>
               </div>
-            )}
-            {profile.section && (
-              <div className="flex items-center gap-3 text-sm">
-                <Building2 className="h-4 w-4 text-muted-foreground" />
-                <span className="text-muted-foreground">{profile.section}</span>
-              </div>
-            )}
+              {profile.rollNumber && (
+                <div className="flex items-center gap-3 text-sm">
+                  <Hash className="h-4 w-4 text-muted-foreground shrink-0" />
+                  <span className="text-muted-foreground">
+                    {profile.rollNumber}
+                  </span>
+                </div>
+              )}
+              {profile.section && (
+                <div className="flex items-center gap-3 text-sm">
+                  <Building2 className="h-4 w-4 text-muted-foreground shrink-0" />
+                  <span className="text-muted-foreground">
+                    {profile.section}
+                  </span>
+                </div>
+              )}
+            </div>
           </CardContent>
         </Card>
 
-        {/* Stats & Info */}
+        {/* Main Content */}
         <div className="lg:col-span-2 space-y-6">
-          {/* Stats */}
+          {/* Performance Stats */}
           <div className="grid gap-4 sm:grid-cols-2">
-            <Card>
+            <Card className="border-border/50 hover:border-primary/30 transition-colors">
               <CardHeader className="flex flex-row items-center justify-between pb-2">
                 <CardTitle className="text-sm font-medium text-muted-foreground">
                   Total Points
                 </CardTitle>
-                <Trophy className="h-5 w-5 text-amber-500" />
+                <div className="p-2 bg-amber-500/10 rounded-lg">
+                  <Trophy className="h-4 w-4 text-amber-500" />
+                </div>
               </CardHeader>
               <CardContent>
                 <p className="text-3xl font-bold">{profile.totalScore}</p>
                 <p className="text-xs text-muted-foreground mt-1">
-                  Keep learning!
+                  {isTeacher
+                    ? "Student engagement points"
+                    : "Keep learning to earn more!"}
                 </p>
               </CardContent>
             </Card>
 
-            <Card>
+            <Card className="border-border/50 hover:border-primary/30 transition-colors">
               <CardHeader className="flex flex-row items-center justify-between pb-2">
                 <CardTitle className="text-sm font-medium text-muted-foreground">
                   Quizzes Taken
                 </CardTitle>
-                <Award className="h-5 w-5 text-primary" />
+                <div className="p-2 bg-primary/10 rounded-lg">
+                  <Award className="h-4 w-4 text-primary" />
+                </div>
               </CardHeader>
               <CardContent>
                 <p className="text-3xl font-bold">{profile.quizzesTaken}</p>
                 <p className="text-xs text-muted-foreground mt-1">
                   {profile.quizzesTaken === 0
-                    ? "Join your first quiz!"
+                    ? isTeacher
+                      ? "Create your first quiz"
+                      : "Join your first quiz!"
                     : "Great progress!"}
                 </p>
               </CardContent>
             </Card>
           </div>
 
-          {/* Account Info */}
+          {/* Account Information */}
           <Card>
             <CardHeader>
-              <CardTitle>Account Information</CardTitle>
+              <CardTitle className="flex items-center gap-2">
+                <Shield className="h-5 w-5" />
+                Account Information
+              </CardTitle>
               <CardDescription>
                 Details about your account and membership
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="flex items-center justify-between py-2 border-b">
-                <div className="flex items-center gap-2">
-                  <User className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-sm font-medium">Role</span>
+              <div className="flex items-center justify-between py-3 border-b">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-muted rounded-lg">
+                    <User className="h-4 w-4 text-muted-foreground" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium">Role</p>
+                    <p className="text-xs text-muted-foreground">
+                      Your account type
+                    </p>
+                  </div>
                 </div>
                 <Badge variant={isTeacher ? "default" : "secondary"}>
                   {isTeacher ? "Teacher" : "Student"}
                 </Badge>
               </div>
-              <div className="flex items-center justify-between py-2 border-b">
-                <div className="flex items-center gap-2">
-                  <Calendar className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-sm font-medium">Member since</span>
+
+              <div className="flex items-center justify-between py-3 border-b">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-muted rounded-lg">
+                    <Calendar className="h-4 w-4 text-muted-foreground" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium">Member Since</p>
+                    <p className="text-xs text-muted-foreground">
+                      Account creation date
+                    </p>
+                  </div>
                 </div>
-                <span className="text-sm text-muted-foreground">
-                  {formatDistanceToNow(new Date(profile.createdAt))}
-                </span>
+                <div className="text-right">
+                  <p className="text-sm font-medium">
+                    {new Date(profile.createdAt).toLocaleDateString("en-US", {
+                      month: "short",
+                      day: "numeric",
+                      year: "numeric",
+                    })}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {formatDistanceToNow(new Date(profile.createdAt))}
+                  </p>
+                </div>
               </div>
-              <div className="flex items-center justify-between py-2">
-                <div className="flex items-center gap-2">
-                  <Calendar className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-sm font-medium">Last updated</span>
+
+              <div className="flex items-center justify-between py-3">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-muted rounded-lg">
+                    <Clock className="h-4 w-4 text-muted-foreground" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium">Last Updated</p>
+                    <p className="text-xs text-muted-foreground">
+                      Profile modification date
+                    </p>
+                  </div>
                 </div>
-                <span className="text-sm text-muted-foreground">
-                  {formatDistanceToNow(new Date(profile.updatedAt))}
-                </span>
+                <div className="text-right">
+                  <p className="text-sm font-medium">
+                    {new Date(profile.updatedAt).toLocaleDateString("en-US", {
+                      month: "short",
+                      day: "numeric",
+                      year: "numeric",
+                    })}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {formatDistanceToNow(new Date(profile.updatedAt))}
+                  </p>
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -211,4 +283,3 @@ export default async function ProfilePage() {
     </div>
   );
 }
-

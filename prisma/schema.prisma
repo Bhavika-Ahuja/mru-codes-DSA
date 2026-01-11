@@ -93,7 +93,7 @@ model Quiz {
   description     String?
   topic           String
   difficulty      DifficultyLevel @default(medium)
-  timePerQuestion Int             @default(30) @map("time_per_question")
+  timeLimit       Int             @default(900) @map("time_limit")
   createdById     String          @map("created_by") @db.Uuid
   status          QuizStatus      @default(draft)
   totalQuestions  Int             @default(0) @map("total_questions")

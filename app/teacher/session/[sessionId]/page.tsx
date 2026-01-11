@@ -60,12 +60,13 @@ interface SessionData {
   currentQuestionIndex: number;
   currentQuestionId: string | null;
   questionStartedAt: string | null;
+  startedAt: string | null;
   quiz: {
     id: string;
     title: string;
     topic: string;
     difficulty: string;
-    timePerQuestion: number;
+    timeLimit: number;
     totalQuestions: number;
     questions: Question[];
   };
@@ -142,19 +143,19 @@ export default function TeacherSessionPage() {
     };
   }, [session, sessionId, supabase, fetchSession]);
 
-  // Timer countdown
+  // Timer countdown - total quiz time
   useEffect(() => {
     if (
       !session ||
       session.status !== "live" ||
-      !session.questionStartedAt
+      !session.startedAt
     ) {
       setTimeRemaining(0);
       return;
     }
 
-    const startTime = new Date(session.questionStartedAt).getTime();
-    const duration = session.quiz.timePerQuestion * 1000;
+    const startTime = new Date(session.startedAt).getTime();
+    const duration = session.quiz.timeLimit * 1000; // Total quiz time in milliseconds
 
     const updateTime = () => {
       const now = Date.now();
@@ -385,7 +386,7 @@ export default function TeacherSessionPage() {
 
                   <Progress
                     value={
-                      (timeRemaining / session.quiz.timePerQuestion) * 100
+                      (timeRemaining / session.quiz.timeLimit) * 100
                     }
                     className="h-2"
                   />
@@ -500,7 +501,7 @@ export default function TeacherSessionPage() {
                 <CardTitle>Questions</CardTitle>
                 <CardDescription>
                   {session.quiz.totalQuestions} questions •{" "}
-                  {session.quiz.timePerQuestion}s per question
+                  {Math.floor(session.quiz.timeLimit / 60)} min total
                 </CardDescription>
               </CardHeader>
               <CardContent>

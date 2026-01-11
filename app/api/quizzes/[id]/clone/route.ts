@@ -58,7 +58,7 @@ export async function POST(
           description: originalQuiz.description,
           topic: originalQuiz.topic,
           difficulty: originalQuiz.difficulty,
-          timePerQuestion: originalQuiz.timePerQuestion,
+          timeLimit: originalQuiz.timeLimit,
           geolocationEnabled: originalQuiz.geolocationEnabled,
           createdById: profile.id,
           status: "draft",

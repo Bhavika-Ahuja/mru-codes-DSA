@@ -48,7 +48,7 @@ export async function GET(
         description: quiz.description,
         topic: quiz.topic,
         difficulty: quiz.difficulty,
-        timePerQuestion: quiz.timePerQuestion,
+        timeLimit: quiz.timeLimit,
         geolocationEnabled: quiz.geolocationEnabled,
         status: quiz.status,
         questions: quiz.questions.map((q) => ({

@@ -15,6 +15,7 @@ import {
   Tooltip,
   Legend,
   ResponsiveContainer,
+  LabelList,
 } from "recharts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -73,7 +74,55 @@ interface AnalyticsData {
   }>;
 }
 
-const COLORS = ["#0088FE", "#00C49F", "#FFBB28", "#FF8042", "#8884d8"];
+// Theme-aware colors with gradients
+const PRIMARY_COLOR = "#7c3aed";
+const PRIMARY_LIGHT = "#a78bfa";
+const SUCCESS_COLOR = "#16a34a";
+const SUCCESS_LIGHT = "#22c55e";
+const WARNING_COLOR = "#ca8a04";
+const WARNING_LIGHT = "#eab308";
+const INFO_COLOR = "#2563eb";
+const INFO_LIGHT = "#3b82f6";
+const DANGER_COLOR = "#dc2626";
+const DANGER_LIGHT = "#ef4444";
+
+const COLORS = [
+  PRIMARY_COLOR,
+  SUCCESS_COLOR,
+  INFO_COLOR,
+  WARNING_COLOR,
+  DANGER_COLOR,
+  PRIMARY_LIGHT,
+  SUCCESS_LIGHT,
+  INFO_LIGHT,
+];
+
+// Custom tooltip component
+const CustomTooltip = ({ active, payload, label }: any) => {
+  if (active && payload && payload.length) {
+    return (
+      <div className="bg-popover border border-border rounded-lg shadow-lg p-3">
+        <p className="font-semibold mb-2 text-foreground">{label}</p>
+        {payload.map((entry: any, index: number) => (
+          <p key={index} className="text-sm" style={{ color: entry.color }}>
+            <span className="font-medium">{entry.name}:</span>{" "}
+            {typeof entry.value === "number"
+              ? entry.name.includes("%") || entry.name.includes("Accuracy")
+                ? `${entry.value.toFixed(1)}%`
+                : entry.value.toFixed(0)
+              : entry.value}
+          </p>
+        ))}
+      </div>
+    );
+  }
+  return null;
+};
+
+// Custom label component for pie charts
+const CustomPieLabel = (entry: any) => {
+  return `${entry.section || entry.difficulty || entry.topic}: ${entry.students || entry.total || entry.value || 0}`;
+};
 
 export function TeacherPerformanceDashboard() {
   const [data, setData] = useState<AnalyticsData | null>(null);
@@ -391,13 +440,35 @@ export function TeacherPerformanceDashboard() {
               </CardHeader>
               <CardContent>
                 <ResponsiveContainer width="100%" height={300}>
-                  <BarChart data={topStudents}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="name" />
-                    <YAxis />
-                    <Tooltip />
-                    <Legend />
-                    <Bar dataKey="score" fill="#0088FE" name="Total Score" />
+                  <BarChart data={topStudents} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+                    <defs>
+                      <linearGradient id="scoreGradient" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor={PRIMARY_COLOR} stopOpacity={0.9} />
+                        <stop offset="100%" stopColor={PRIMARY_COLOR} stopOpacity={0.5} />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.3} />
+                    <XAxis 
+                      dataKey="name" 
+                      stroke="hsl(var(--muted-foreground))"
+                      style={{ fontSize: "12px" }}
+                    />
+                    <YAxis 
+                      stroke="hsl(var(--muted-foreground))"
+                      style={{ fontSize: "12px" }}
+                    />
+                    <Tooltip content={<CustomTooltip />} />
+                    <Legend 
+                      wrapperStyle={{ fontSize: "12px" }}
+                      iconType="circle"
+                    />
+                    <Bar 
+                      dataKey="score" 
+                      fill={`url(#scoreGradient)`}
+                      name="Total Score"
+                      radius={[8, 8, 0, 0]}
+                      animationDuration={800}
+                    />
                   </BarChart>
                 </ResponsiveContainer>
               </CardContent>
@@ -409,13 +480,36 @@ export function TeacherPerformanceDashboard() {
               </CardHeader>
               <CardContent>
                 <ResponsiveContainer width="100%" height={300}>
-                  <BarChart data={topStudents}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="name" />
-                    <YAxis />
-                    <Tooltip />
-                    <Legend />
-                    <Bar dataKey="accuracy" fill="#00C49F" name="Accuracy %" />
+                  <BarChart data={topStudents} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+                    <defs>
+                      <linearGradient id="accuracyGradient" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor={SUCCESS_COLOR} stopOpacity={0.9} />
+                        <stop offset="100%" stopColor={SUCCESS_COLOR} stopOpacity={0.5} />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.3} />
+                    <XAxis 
+                      dataKey="name" 
+                      stroke="hsl(var(--muted-foreground))"
+                      style={{ fontSize: "12px" }}
+                    />
+                    <YAxis 
+                      stroke="hsl(var(--muted-foreground))"
+                      style={{ fontSize: "12px" }}
+                      domain={[0, 100]}
+                    />
+                    <Tooltip content={<CustomTooltip />} />
+                    <Legend 
+                      wrapperStyle={{ fontSize: "12px" }}
+                      iconType="circle"
+                    />
+                    <Bar 
+                      dataKey="accuracy" 
+                      fill={`url(#accuracyGradient)`}
+                      name="Accuracy %"
+                      radius={[8, 8, 0, 0]}
+                      animationDuration={800}
+                    />
                   </BarChart>
                 </ResponsiveContainer>
               </CardContent>
@@ -432,14 +526,46 @@ export function TeacherPerformanceDashboard() {
                 </CardHeader>
                 <CardContent>
                   <ResponsiveContainer width="100%" height={300}>
-                    <BarChart data={sectionPerformance}>
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="section" />
-                      <YAxis />
-                      <Tooltip />
-                      <Legend />
-                      <Bar dataKey="avgScore" fill="#8884d8" name="Avg Score" />
-                      <Bar dataKey="avgAccuracy" fill="#82ca9d" name="Avg Accuracy %" />
+                    <BarChart data={sectionPerformance} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+                      <defs>
+                        <linearGradient id="sectionScoreGradient" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stopColor={PRIMARY_COLOR} stopOpacity={0.9} />
+                          <stop offset="100%" stopColor={PRIMARY_COLOR} stopOpacity={0.5} />
+                        </linearGradient>
+                        <linearGradient id="sectionAccuracyGradient" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stopColor={SUCCESS_COLOR} stopOpacity={0.9} />
+                          <stop offset="100%" stopColor={SUCCESS_COLOR} stopOpacity={0.5} />
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.3} />
+                      <XAxis 
+                        dataKey="section" 
+                        stroke="hsl(var(--muted-foreground))"
+                        style={{ fontSize: "12px" }}
+                      />
+                      <YAxis 
+                        stroke="hsl(var(--muted-foreground))"
+                        style={{ fontSize: "12px" }}
+                      />
+                      <Tooltip content={<CustomTooltip />} />
+                      <Legend 
+                        wrapperStyle={{ fontSize: "12px" }}
+                        iconType="circle"
+                      />
+                      <Bar 
+                        dataKey="avgScore" 
+                        fill={`url(#sectionScoreGradient)`}
+                        name="Avg Score"
+                        radius={[8, 8, 0, 0]}
+                        animationDuration={800}
+                      />
+                      <Bar 
+                        dataKey="avgAccuracy" 
+                        fill={`url(#sectionAccuracyGradient)`}
+                        name="Avg Accuracy %"
+                        radius={[8, 8, 0, 0]}
+                        animationDuration={800}
+                      />
                     </BarChart>
                   </ResponsiveContainer>
                 </CardContent>
@@ -457,16 +583,18 @@ export function TeacherPerformanceDashboard() {
                         cx="50%"
                         cy="50%"
                         labelLine={false}
-                        label={(entry: any) => `${entry.section}: ${entry.students}`}
-                        outerRadius={80}
+                        label={CustomPieLabel}
+                        outerRadius={100}
                         fill="#8884d8"
                         dataKey="students"
+                        animationBegin={0}
+                        animationDuration={800}
                       >
                         {sectionPerformance.map((entry, index) => (
                           <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                         ))}
                       </Pie>
-                      <Tooltip />
+                      <Tooltip content={<CustomTooltip />} />
                     </PieChart>
                   </ResponsiveContainer>
                 </CardContent>
@@ -488,14 +616,40 @@ export function TeacherPerformanceDashboard() {
                 <CardTitle>Topic Performance</CardTitle>
               </CardHeader>
               <CardContent>
-                <ResponsiveContainer width="100%" height={400}>
-                  <BarChart data={topicPerformanceData}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="topic" />
-                    <YAxis />
-                    <Tooltip />
-                    <Legend />
-                    <Bar dataKey="accuracy" fill="#FF8042" name="Accuracy %" />
+                  <ResponsiveContainer width="100%" height={400}>
+                    <BarChart data={topicPerformanceData} margin={{ top: 20, right: 30, left: 20, bottom: 60 }}>
+                      <defs>
+                        <linearGradient id="topicGradient" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stopColor={WARNING_COLOR} stopOpacity={0.9} />
+                          <stop offset="100%" stopColor={WARNING_COLOR} stopOpacity={0.5} />
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.3} />
+                    <XAxis 
+                      dataKey="topic" 
+                      angle={-45}
+                      textAnchor="end"
+                      height={80}
+                      stroke="hsl(var(--muted-foreground))"
+                      style={{ fontSize: "12px" }}
+                    />
+                    <YAxis 
+                      stroke="hsl(var(--muted-foreground))"
+                      style={{ fontSize: "12px" }}
+                      domain={[0, 100]}
+                    />
+                    <Tooltip content={<CustomTooltip />} />
+                    <Legend 
+                      wrapperStyle={{ fontSize: "12px" }}
+                      iconType="circle"
+                    />
+                    <Bar 
+                      dataKey="accuracy" 
+                      fill={`url(#topicGradient)`}
+                      name="Accuracy %"
+                      radius={[8, 8, 0, 0]}
+                      animationDuration={800}
+                    />
                   </BarChart>
                 </ResponsiveContainer>
               </CardContent>
@@ -518,13 +672,36 @@ export function TeacherPerformanceDashboard() {
                 </CardHeader>
                 <CardContent>
                   <ResponsiveContainer width="100%" height={300}>
-                    <BarChart data={difficultyPerformanceData}>
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="difficulty" />
-                      <YAxis />
-                      <Tooltip />
-                      <Legend />
-                      <Bar dataKey="accuracy" fill="#FFBB28" name="Accuracy %" />
+                    <BarChart data={difficultyPerformanceData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+                      <defs>
+                        <linearGradient id="difficultyGradient" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stopColor={WARNING_COLOR} stopOpacity={0.9} />
+                          <stop offset="100%" stopColor={WARNING_COLOR} stopOpacity={0.5} />
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.3} />
+                      <XAxis 
+                        dataKey="difficulty" 
+                        stroke="hsl(var(--muted-foreground))"
+                        style={{ fontSize: "12px" }}
+                      />
+                      <YAxis 
+                        stroke="hsl(var(--muted-foreground))"
+                        style={{ fontSize: "12px" }}
+                        domain={[0, 100]}
+                      />
+                      <Tooltip content={<CustomTooltip />} />
+                      <Legend 
+                        wrapperStyle={{ fontSize: "12px" }}
+                        iconType="circle"
+                      />
+                      <Bar 
+                        dataKey="accuracy" 
+                        fill={`url(#difficultyGradient)`}
+                        name="Accuracy %"
+                        radius={[8, 8, 0, 0]}
+                        animationDuration={800}
+                      />
                     </BarChart>
                   </ResponsiveContainer>
                 </CardContent>
@@ -542,16 +719,18 @@ export function TeacherPerformanceDashboard() {
                         cx="50%"
                         cy="50%"
                         labelLine={false}
-                        label={(entry: any) => `${entry.difficulty}: ${entry.total}`}
-                        outerRadius={80}
+                        label={CustomPieLabel}
+                        outerRadius={100}
                         fill="#8884d8"
                         dataKey="total"
+                        animationBegin={0}
+                        animationDuration={800}
                       >
                         {difficultyPerformanceData.map((entry, index) => (
                           <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                         ))}
                       </Pie>
-                      <Tooltip />
+                      <Tooltip content={<CustomTooltip />} />
                     </PieChart>
                   </ResponsiveContainer>
                 </CardContent>
@@ -576,23 +755,51 @@ export function TeacherPerformanceDashboard() {
                 <CardContent>
                   {performanceOverTime.length > 0 ? (
                     <ResponsiveContainer width="100%" height={300}>
-                      <LineChart data={performanceOverTime}>
-                        <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis dataKey="date" />
-                        <YAxis />
-                        <Tooltip />
-                        <Legend />
+                      <LineChart data={performanceOverTime} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+                        <defs>
+                          <linearGradient id="scoreLineGradient" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor={PRIMARY_COLOR} stopOpacity={0.3} />
+                            <stop offset="95%" stopColor={PRIMARY_COLOR} stopOpacity={0} />
+                          </linearGradient>
+                          <linearGradient id="accuracyLineGradient" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor={SUCCESS_COLOR} stopOpacity={0.3} />
+                            <stop offset="95%" stopColor={SUCCESS_COLOR} stopOpacity={0} />
+                          </linearGradient>
+                        </defs>
+                        <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.3} />
+                        <XAxis 
+                          dataKey="date" 
+                          stroke="hsl(var(--muted-foreground))"
+                          style={{ fontSize: "12px" }}
+                        />
+                        <YAxis 
+                          stroke="hsl(var(--muted-foreground))"
+                          style={{ fontSize: "12px" }}
+                        />
+                        <Tooltip content={<CustomTooltip />} />
+                        <Legend 
+                          wrapperStyle={{ fontSize: "12px" }}
+                          iconType="line"
+                        />
                         <Line
                           type="monotone"
                           dataKey="score"
-                          stroke="#0088FE"
+                          stroke={PRIMARY_COLOR}
+                          strokeWidth={3}
+                          dot={{ fill: PRIMARY_COLOR, r: 4 }}
+                          activeDot={{ r: 6 }}
                           name="Score"
+                          animationDuration={800}
                         />
                         <Line
                           type="monotone"
                           dataKey="accuracy"
-                          stroke="#00C49F"
+                          stroke={SUCCESS_COLOR}
+                          strokeWidth={3}
+                          dot={{ fill: SUCCESS_COLOR, r: 4 }}
+                          activeDot={{ r: 6 }}
                           name="Accuracy %"
+                          animationDuration={800}
                         />
                       </LineChart>
                     </ResponsiveContainer>
@@ -619,12 +826,36 @@ export function TeacherPerformanceDashboard() {
                               perf.total > 0 ? (perf.correct / perf.total) * 100 : 0,
                           })
                         )}
+                        margin={{ top: 20, right: 30, left: 20, bottom: 60 }}
                       >
-                        <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis dataKey="topic" />
-                        <YAxis />
-                        <Tooltip />
-                        <Bar dataKey="accuracy" fill="#FF8042" name="Accuracy %" />
+                        <defs>
+                          <linearGradient id="studentTopicGradient" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="0%" stopColor={WARNING_COLOR} stopOpacity={0.9} />
+                            <stop offset="100%" stopColor={WARNING_COLOR} stopOpacity={0.5} />
+                          </linearGradient>
+                        </defs>
+                        <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.3} />
+                        <XAxis 
+                          dataKey="topic" 
+                          angle={-45}
+                          textAnchor="end"
+                          height={80}
+                          stroke="hsl(var(--muted-foreground))"
+                          style={{ fontSize: "12px" }}
+                        />
+                        <YAxis 
+                          stroke="hsl(var(--muted-foreground))"
+                          style={{ fontSize: "12px" }}
+                          domain={[0, 100]}
+                        />
+                        <Tooltip content={<CustomTooltip />} />
+                        <Bar 
+                          dataKey="accuracy" 
+                          fill={`url(#studentTopicGradient)`}
+                          name="Accuracy %"
+                          radius={[8, 8, 0, 0]}
+                          animationDuration={800}
+                        />
                       </BarChart>
                     </ResponsiveContainer>
                   ) : (

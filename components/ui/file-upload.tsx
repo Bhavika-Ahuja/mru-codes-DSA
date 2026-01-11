@@ -179,7 +179,7 @@ export function FileUpload({
                   type="button"
                   onClick={handleRemove}
                   disabled={disabled}
-                  className="flex-shrink-0 h-8 w-8 rounded-full hover:bg-destructive/10 flex items-center justify-center transition-colors group"
+                  className="flex-shrink-0 h-8 w-8 rounded-full hover:bg-destructive/10 flex items-center justify-center transition-colors cursor-pointer group"
                 >
                   <X className="h-4 w-4 text-muted-foreground group-hover:text-destructive" />
                 </button>
@@ -199,7 +199,7 @@ export function FileUpload({
                     type="button"
                     onClick={() => fileInputRef.current?.click()}
                     disabled={disabled}
-                    className="text-primary hover:underline font-medium"
+                    className="text-primary hover:underline font-medium cursor-pointer"
                   >
                     browse
                   </button>

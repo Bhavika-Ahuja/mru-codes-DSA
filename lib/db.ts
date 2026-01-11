@@ -114,7 +114,7 @@ export async function createQuiz(data: {
   description?: string;
   topic: string;
   difficulty?: "easy" | "medium" | "hard";
-  timePerQuestion?: number;
+  timeLimit?: number;
   createdById: string;
 }) {
   return prisma.quiz.create({
@@ -123,7 +123,7 @@ export async function createQuiz(data: {
       description: data.description,
       topic: data.topic,
       difficulty: data.difficulty || "medium",
-      timePerQuestion: data.timePerQuestion || 30,
+      timeLimit: data.timeLimit || 900,
       createdById: data.createdById,
     },
   });

@@ -70,7 +70,7 @@ Return the response in this exact JSON format (no markdown, no code blocks, just
 }`;
 
     const model = genAI.getGenerativeModel({ 
-      model: "gemini-1.5-flash",
+      model: "gemini-2.5-flash",
       generationConfig: {
         responseMimeType: "application/json",
         temperature: 0.7,

@@ -151,7 +151,7 @@ export default function SignupPage() {
                   <button
                     type="button"
                     onClick={() => setValue("role", "student")}
-                    className={`p-4 rounded-lg border-2 transition-all ${selectedRole === "student"
+                    className={`p-4 rounded-lg border-2 transition-all cursor-pointer ${selectedRole === "student"
                       ? "border-primary bg-primary/5"
                       : "border-border/50 hover:border-primary/30"
                       }`}
@@ -164,7 +164,7 @@ export default function SignupPage() {
                   <button
                     type="button"
                     onClick={() => setValue("role", "teacher")}
-                    className={`p-4 rounded-lg border-2 transition-all ${selectedRole === "teacher"
+                    className={`p-4 rounded-lg border-2 transition-all cursor-pointer ${selectedRole === "teacher"
                       ? "border-primary bg-primary/5"
                       : "border-border/50 hover:border-primary/30"
                       }`}
@@ -219,7 +219,7 @@ export default function SignupPage() {
                     <button
                       type="button"
                       onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
                       tabIndex={-1}
                     >
                       {showPassword ? (
@@ -248,7 +248,7 @@ export default function SignupPage() {
                     <button
                       type="button"
                       onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
                       tabIndex={-1}
                     >
                       {showConfirmPassword ? (
