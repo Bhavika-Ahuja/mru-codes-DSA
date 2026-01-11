@@ -41,6 +41,8 @@ export async function POST(
       );
     }
 
+    // Only block joining if session is completed
+    // Allow joining during "waiting" and "live" statuses
     if (session.status === "completed") {
       return NextResponse.json(
         { error: "This session has already ended" },
@@ -50,7 +52,17 @@ export async function POST(
 
     // Check geolocation if enabled
     if (session.quiz.geolocationEnabled) {
-      const body = await request.json().catch(() => ({}));
+      let body: { latitude?: number; longitude?: number } = {};
+      try {
+        const text = await request.text();
+        if (text) {
+          body = JSON.parse(text);
+        }
+      } catch (parseError) {
+        // If body parsing fails, treat as no location provided
+        console.warn("Failed to parse request body:", parseError);
+      }
+      
       const { latitude, longitude } = body;
 
       if (!latitude || !longitude) {
@@ -98,6 +110,11 @@ export async function POST(
     }
 
     // Create participant record
+    // If quiz is live, start from the current question index, otherwise start from 0
+    const startingQuestionIndex = session.status === "live" 
+      ? session.currentQuestionIndex 
+      : 0;
+
     const participant = await prisma.sessionParticipant.create({
       data: {
         sessionId,
@@ -105,19 +122,29 @@ export async function POST(
         sessionScore: 0,
         questionsAnswered: 0,
         correctAnswers: 0,
+        currentQuestionIndex: startingQuestionIndex,
       },
     });
 
-    // Broadcast join event via Supabase realtime
-    const supabase = await createClient();
-    await supabase.channel(`quiz-session-${sessionId}`).send({
-      type: "broadcast",
-      event: "participant_join",
-      payload: {
-        user_id: profile.id,
-        full_name: profile.fullName,
-      },
-    });
+    // Broadcast join event via Supabase realtime (non-blocking)
+    try {
+      const supabase = await createClient();
+      const channel = supabase.channel(`quiz-session-${sessionId}`);
+      await channel.subscribe();
+      await (channel.httpSend as (
+        event: string,
+        payload: Record<string, unknown>
+      ) => Promise<unknown>)(
+        "participant_join",
+        {
+          user_id: profile.id,
+          full_name: profile.fullName,
+        }
+      );
+    } catch (broadcastError) {
+      // Log but don't fail the join operation if broadcast fails
+      console.warn("Failed to broadcast join event (non-critical):", broadcastError);
+    }
 
     return NextResponse.json({
       success: true,
@@ -133,8 +160,12 @@ export async function POST(
     });
   } catch (error) {
     console.error("Error joining session:", error);
+    const errorMessage = error instanceof Error ? error.message : "Failed to join session";
     return NextResponse.json(
-      { error: "Failed to join session" },
+      { 
+        error: errorMessage,
+        details: error instanceof Error ? error.stack : undefined
+      },
       { status: 500 }
     );
   }

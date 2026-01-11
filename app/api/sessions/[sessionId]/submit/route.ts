@@ -56,9 +56,22 @@ export async function POST(
       );
     }
 
-    if (session.currentQuestionId !== questionId) {
+    // Verify the question exists in the quiz (students control their own progression)
+    const question = await prisma.question.findUnique({
+      where: { id: questionId },
+      include: { quiz: true },
+    });
+
+    if (!question) {
       return NextResponse.json(
-        { error: "This is not the current question" },
+        { error: "Question not found" },
+        { status: 404 }
+      );
+    }
+
+    if (question.quizId !== session.quizId) {
+      return NextResponse.json(
+        { error: "Question does not belong to this quiz" },
         { status: 400 }
       );
     }
@@ -98,19 +111,7 @@ export async function POST(
       );
     }
 
-    // Get the question to check the answer
-    const question = await prisma.question.findUnique({
-      where: { id: questionId },
-    });
-
-    if (!question) {
-      return NextResponse.json(
-        { error: "Question not found" },
-        { status: 404 }
-      );
-    }
-
-    // Check if the selected option is correct
+    // Check if the selected option is correct (question already fetched above)
     const options = question.options as { id: string; text: string; is_correct: boolean }[];
     const selectedOption = options.find((o) => o.id === selectedOptionId);
     const correctOption = options.find((o) => o.is_correct);
@@ -157,15 +158,19 @@ export async function POST(
       return submission;
     });
 
-    // Broadcast score update
-    await supabase.channel(`quiz-session-${sessionId}`).send({
-      type: "broadcast",
-      event: "score_update",
-      payload: {
+    // Broadcast score update via REST (server-side)
+    const channel = supabase.channel(`quiz-session-${sessionId}`);
+    await channel.subscribe();
+    await (channel.httpSend as (
+      event: string,
+      payload: Record<string, unknown>
+    ) => Promise<unknown>)(
+      "score_update",
+      {
         user_id: user.id,
         score: participant.sessionScore + score,
-      },
-    });
+      }
+    );
 
     return NextResponse.json({
       success: true,

@@ -5,9 +5,7 @@ import { Upload, FileText, X, CheckCircle2, Loader2, AlertCircle } from "lucide-
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 
-interface FileUploadProps {
-  onFileSelect: (file: File) => void;
-  onFileRemove?: () => void;
+type SerializableProps = {
   accept?: string;
   maxSize?: number; // in MB
   disabled?: boolean;
@@ -17,21 +15,27 @@ interface FileUploadProps {
   label?: string;
   description?: string;
   required?: boolean;
-}
+};
 
-export function FileUpload({
-  onFileSelect,
-  onFileRemove,
-  accept = "application/pdf",
-  maxSize = 10,
-  disabled = false,
-  uploading = false,
-  uploadedFileName = null,
-  error = null,
-  label = "PDF File",
-  description,
-  required = false,
-}: FileUploadProps) {
+type FileUploadProps = SerializableProps & {
+  onFileSelect: (file: File) => void;
+  onFileRemove?: () => void;
+};
+
+export function FileUpload(props: FileUploadProps) {
+  const {
+    onFileSelect,
+    onFileRemove,
+    accept = "application/pdf",
+    maxSize = 10,
+    disabled = false,
+    uploading = false,
+    uploadedFileName = null,
+    error = null,
+    label = "PDF File",
+    description,
+    required = false,
+  } = props;
   const [isDragging, setIsDragging] = useState(false);
   const [file, setFile] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -51,11 +55,23 @@ export function FileUpload({
   }, []);
 
   const validateFile = useCallback((file: File): string | null => {
-    if (accept && !file.type.match(accept)) {
-      return `Only ${accept.split('/')[1].toUpperCase()} files are allowed`;
+    // Check file extension as fallback (some browsers don't set MIME type correctly)
+    const fileExt = file.name.split(".").pop()?.toLowerCase();
+    const isValidPdf =
+      file.type === "application/pdf" ||
+      file.type === "" ||
+      fileExt === "pdf";
+
+    if (accept && accept.includes("pdf") && !isValidPdf) {
+      return "Only PDF files are allowed";
     }
+
+    if (file.size === 0) {
+      return "File is empty. Please select a valid file.";
+    }
+
     if (file.size > maxSize * 1024 * 1024) {
-      return `File size must be less than ${maxSize}MB`;
+      return `File size must be less than ${maxSize}MB. Your file is ${(file.size / (1024 * 1024)).toFixed(2)}MB`;
     }
     return null;
   }, [accept, maxSize]);
@@ -157,14 +173,14 @@ export function FileUpload({
         ) : hasFile ? (
           <div className="p-6">
             <div className="flex items-start gap-4">
-              <div className="flex-shrink-0">
+              <div className="shrink-0">
                 <div className="h-12 w-12 rounded-lg bg-green-500/10 border border-green-500/20 flex items-center justify-center">
                   <FileText className="h-6 w-6 text-green-600" />
                 </div>
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 mb-1">
-                  <CheckCircle2 className="h-4 w-4 text-green-600 flex-shrink-0" />
+                  <CheckCircle2 className="h-4 w-4 text-green-600 shrink-0" />
                   <p className="text-sm font-medium truncate">{displayFileName}</p>
                 </div>
                 {displayFileSize && (
@@ -179,7 +195,7 @@ export function FileUpload({
                   type="button"
                   onClick={handleRemove}
                   disabled={disabled}
-                  className="flex-shrink-0 h-8 w-8 rounded-full hover:bg-destructive/10 flex items-center justify-center transition-colors cursor-pointer group"
+                  className="shrink-0 h-8 w-8 rounded-full hover:bg-destructive/10 flex items-center justify-center transition-colors cursor-pointer group"
                 >
                   <X className="h-4 w-4 text-muted-foreground group-hover:text-destructive" />
                 </button>
@@ -226,7 +242,7 @@ export function FileUpload({
         {error && (
           <div className="absolute bottom-4 left-4 right-4">
             <div className="bg-destructive/10 border border-destructive/20 rounded-md p-3 flex items-center gap-2 text-destructive">
-              <AlertCircle className="h-4 w-4 flex-shrink-0" />
+              <AlertCircle className="h-4 w-4 shrink-0" />
               <p className="text-xs font-medium">{error}</p>
             </div>
           </div>

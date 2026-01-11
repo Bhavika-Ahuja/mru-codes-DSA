@@ -21,9 +21,26 @@ export async function updateSession(request: NextRequest) {
           supabaseResponse = NextResponse.next({
             request,
           });
-          cookiesToSet.forEach(({ name, value, options }) =>
-            supabaseResponse.cookies.set(name, value, options)
-          );
+          // Set cookies with extended expiration (30 days) for persistent sessions
+          cookiesToSet.forEach(({ name, value, options }) => {
+            const cookieOptions = options as {
+              maxAge?: number;
+              expires?: Date;
+              httpOnly?: boolean;
+              secure?: boolean;
+              sameSite?: "strict" | "lax" | "none";
+              path?: string;
+            } || {};
+
+            supabaseResponse.cookies.set(name, value, {
+              ...cookieOptions,
+              maxAge: cookieOptions.maxAge || 60 * 60 * 24 * 30, // 30 days default
+              httpOnly: cookieOptions.httpOnly ?? true,
+              secure: cookieOptions.secure ?? process.env.NODE_ENV === "production",
+              sameSite: cookieOptions.sameSite ?? "lax",
+              path: cookieOptions.path ?? "/",
+            });
+          });
         },
       },
     }

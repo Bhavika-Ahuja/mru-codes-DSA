@@ -54,7 +54,6 @@ export async function GET(
           },
           orderBy: { sessionScore: "desc" },
         },
-        currentQuestion: true,
       },
     });
 
@@ -135,21 +134,23 @@ export async function GET(
       });
     }
 
-    // For participants, return safe data (no correct answers)
-    const currentQuestion = session.currentQuestion
-      ? {
-          id: session.currentQuestion.id,
-          questionText: session.currentQuestion.questionText,
-          options: (session.currentQuestion.options as { id: string; text: string }[]).map(
-            (o) => ({
-              id: o.id,
-              text: o.text,
-            })
-          ),
-          orderIndex: session.currentQuestion.orderIndex,
-          points: session.currentQuestion.points,
-        }
-      : null;
+    // For participants, return all questions (safe data - no correct answers) and their current question index
+    const participant = session.participants.find((p) => p.studentId === user.id);
+    const currentQuestionIndex = participant?.currentQuestionIndex ?? 0;
+    const questionsAnswered = participant?.questionsAnswered ?? 0;
+
+    const allQuestions = session.quiz.questions.map((q) => ({
+      id: q.id,
+      questionText: q.questionText,
+      options: (q.options as { id: string; text: string }[]).map((o) => ({
+        id: o.id,
+        text: o.text,
+      })),
+      orderIndex: q.orderIndex,
+      points: q.points,
+    }));
+
+    const currentQuestion = allQuestions[currentQuestionIndex] || null;
 
     return NextResponse.json({
       success: true,
@@ -157,7 +158,7 @@ export async function GET(
         id: session.id,
         roomCode: session.roomCode,
         status: session.status,
-        currentQuestionIndex: session.currentQuestionIndex,
+        currentQuestionIndex,
         questionStartedAt: session.questionStartedAt?.toISOString(),
         startedAt: session.startedAt?.toISOString(),
         quiz: {
@@ -167,16 +168,41 @@ export async function GET(
           timeLimit: session.quiz.timeLimit,
           totalQuestions: session.quiz.questions.length,
           geolocationEnabled: session.quiz.geolocationEnabled,
+          questions: allQuestions,
         },
         host: session.host,
         currentQuestion,
         participantCount: session.participants.length,
+        questionsAnswered,
       },
       isHost: false,
       isParticipant: true,
     });
   } catch (error) {
     console.error("Error fetching session:", error);
+    
+    // Provide more specific error messages
+    if (error instanceof Error) {
+      // Check for Prisma errors
+      if (error.message.includes("column") || error.message.includes("does not exist")) {
+        return NextResponse.json(
+          { 
+            error: "Database schema mismatch. Please run database migrations.",
+            details: error.message 
+          },
+          { status: 500 }
+        );
+      }
+      
+      return NextResponse.json(
+        { 
+          error: "Failed to fetch session",
+          details: error.message 
+        },
+        { status: 500 }
+      );
+    }
+    
     return NextResponse.json(
       { error: "Failed to fetch session" },
       { status: 500 }
@@ -313,18 +339,23 @@ export async function PATCH(
       data: updateData,
     });
 
-    // Update the session in Supabase for realtime triggers
-    await supabase
-      .from("quiz_sessions")
-      .update({
-        status: updateData.status ?? session.status,
-        current_question_id: updateData.currentQuestionId,
-        current_question_index: updateData.currentQuestionIndex ?? session.currentQuestionIndex,
-        question_started_at: updateData.questionStartedAt?.toISOString(),
-        started_at: updateData.startedAt?.toISOString(),
-        ended_at: updateData.endedAt?.toISOString(),
-      })
-      .eq("id", sessionId);
+    // Update the session in Supabase for realtime triggers (optional - only if Supabase table exists)
+    try {
+      await supabase
+        .from("quiz_sessions")
+        .update({
+          status: updateData.status ?? session.status,
+          current_question_id: updateData.currentQuestionId,
+          current_question_index: updateData.currentQuestionIndex ?? session.currentQuestionIndex,
+          question_started_at: updateData.questionStartedAt?.toISOString(),
+          started_at: updateData.startedAt?.toISOString(),
+          ended_at: updateData.endedAt?.toISOString(),
+        })
+        .eq("id", sessionId);
+    } catch (supabaseError) {
+      // Supabase update is optional for realtime - log but don't fail
+      console.warn("Failed to update Supabase for realtime (non-critical):", supabaseError);
+    }
 
     return NextResponse.json({
       success: true,

@@ -172,6 +172,7 @@ model SessionParticipant {
   sessionScore      Int      @default(0) @map("session_score")
   questionsAnswered Int      @default(0) @map("questions_answered")
   correctAnswers    Int      @default(0) @map("correct_answers")
+  currentQuestionIndex Int   @default(0) @map("current_question_index")
   joinedAt          DateTime @default(now()) @map("joined_at") @db.Timestamptz
 
   // Relations

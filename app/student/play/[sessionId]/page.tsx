@@ -12,6 +12,9 @@ import {
   Hourglass,
   PartyPopper,
   MapPin,
+  ChevronRight,
+  List,
+  LogOut,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -54,6 +57,7 @@ interface SessionData {
     timeLimit: number;
     totalQuestions: number;
     geolocationEnabled?: boolean;
+    questions?: CurrentQuestion[];
   };
   host: {
     id: string;
@@ -61,6 +65,7 @@ interface SessionData {
   };
   currentQuestion: CurrentQuestion | null;
   participantCount: number;
+  questionsAnswered?: number;
 }
 
 interface SubmissionResult {
@@ -87,6 +92,8 @@ export default function StudentPlayPage() {
   const [timeRemaining, setTimeRemaining] = useState(0);
   const [totalScore, setTotalScore] = useState(0);
   const [currentQuestionId, setCurrentQuestionId] = useState<string | null>(null);
+  const [isMovingToNext, setIsMovingToNext] = useState(false);
+  const [showAllQuestions, setShowAllQuestions] = useState(false);
 
   // Fetch session data
   const fetchSession = useCallback(async () => {
@@ -101,7 +108,13 @@ export default function StudentPlayPage() {
       setSession(data.session);
       setHasJoined(data.isParticipant);
 
-      // Reset answer state on new question
+      // Reset answer state on new question if question changed
+      if (data.session.currentQuestion?.id !== currentQuestionId) {
+        setSelectedOption(null);
+        setHasAnswered(false);
+        setSubmissionResult(null);
+        setCurrentQuestionId(data.session.currentQuestion?.id || null);
+      }
       if (data.session.currentQuestion?.id !== currentQuestionId) {
         setCurrentQuestionId(data.session.currentQuestion?.id || null);
         setSelectedOption(null);
@@ -310,6 +323,49 @@ export default function StudentPlayPage() {
     }
   };
 
+  // Move to next question
+  const moveToNextQuestion = async () => {
+    if (!session) return;
+
+    setIsMovingToNext(true);
+    try {
+      const response = await fetch(`/api/sessions/${sessionId}/next-question`, {
+        method: "POST",
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to move to next question");
+      }
+
+      if (data.isComplete) {
+        toast.success("You've completed all questions!");
+        await fetchSession();
+      } else {
+        // Reset state for new question
+        setSelectedOption(null);
+        setHasAnswered(false);
+        setSubmissionResult(null);
+        await fetchSession();
+      }
+    } catch (error) {
+      console.error("Error moving to next question:", error);
+      toast.error(
+        error instanceof Error ? error.message : "Failed to move to next question"
+      );
+    } finally {
+      setIsMovingToNext(false);
+    }
+  };
+
+  // Format time as MM:SS
+  const formatTime = (seconds: number): string => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
+  };
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
@@ -330,7 +386,7 @@ export default function StudentPlayPage() {
     );
   }
 
-  // Not joined yet
+  // Not joined yet - allow joining during waiting or live status
   if (!hasJoined && session.status !== "completed") {
     return (
       <div className="max-w-md mx-auto">
@@ -340,6 +396,13 @@ export default function StudentPlayPage() {
             <CardDescription>
               Hosted by {session.host.fullName}
             </CardDescription>
+            {session.status === "live" && (
+              <div className="mt-2">
+                <Badge className="bg-green-500/10 text-green-600 border-green-500/20">
+                  Quiz in Progress
+                </Badge>
+              </div>
+            )}
           </CardHeader>
           <CardContent className="space-y-6">
             <div className="grid grid-cols-2 gap-4 text-center">
@@ -369,6 +432,13 @@ export default function StudentPlayPage() {
                 </Badge>
               )}
             </div>
+            {session.status === "live" && (
+              <div className="p-3 bg-blue-500/10 border border-blue-500/20 rounded-lg">
+                <p className="text-sm text-blue-700 dark:text-blue-400">
+                  The quiz has already started. You can still join and answer questions from where the quiz is currently at.
+                </p>
+              </div>
+            )}
             {session.quiz.geolocationEnabled && (
               <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-lg">
                 <p className="text-sm text-amber-700 dark:text-amber-400 flex items-center gap-2">
@@ -381,7 +451,7 @@ export default function StudentPlayPage() {
             )}
             <Button
               size="lg"
-              className="w-full"
+              className="w-full cursor-pointer"
               onClick={joinSession}
               disabled={isJoining}
             >
@@ -391,7 +461,9 @@ export default function StudentPlayPage() {
                   Joining...
                 </>
               ) : (
-                "Join Quiz"
+                <>
+                  {session.status === "live" ? "Join Quiz Now" : "Join Quiz"}
+                </>
               )}
             </Button>
           </CardContent>
@@ -468,6 +540,37 @@ export default function StudentPlayPage() {
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">
+      {/* Completion Banner - Show when all questions are answered */}
+      {(session.questionsAnswered ?? 0) >= session.quiz.totalQuestions && (
+        <Card className="border-2 border-primary/30 bg-gradient-to-br from-primary/10 via-primary/5 to-transparent">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <div className="flex items-center justify-center w-12 h-12 rounded-full bg-primary/20">
+                  <Check className="h-6 w-6 text-primary" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-foreground">
+                    All Questions Completed
+                  </h3>
+                  <p className="text-sm text-muted-foreground">
+                    Your test has been submitted successfully
+                  </p>
+                </div>
+              </div>
+              <Button
+                size="lg"
+                className="cursor-pointer bg-primary hover:bg-primary/90 text-primary-foreground"
+                onClick={() => router.push("/student/dashboard")}
+              >
+                <PartyPopper className="h-4 w-4 mr-2" />
+                Acknowledge & Exit
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Header with timer and score */}
       <div className="flex items-center justify-between">
         <Badge variant="outline" className="text-lg px-4 py-2">
@@ -481,14 +584,14 @@ export default function StudentPlayPage() {
           </div>
           <div
             className={`flex items-center gap-2 px-4 py-2 rounded-lg ${
-              timeRemaining <= 5
+              timeRemaining <= 60
                 ? "bg-red-500/10 text-red-500"
                 : "bg-muted"
             }`}
           >
             <Clock className="h-5 w-5" />
             <span className="text-2xl font-mono font-bold">
-              {timeRemaining}
+              {formatTime(timeRemaining)}
             </span>
           </div>
         </div>
@@ -615,12 +718,125 @@ export default function StudentPlayPage() {
                 {submissionResult.explanation}
               </p>
             )}
-            <p className="text-sm text-muted-foreground mt-4">
-              Waiting for next question...
-            </p>
+            {(session.questionsAnswered ?? 0) >= session.quiz.totalQuestions ? (
+              // All questions completed - show prominent completion section
+              <div className="space-y-4 mt-6">
+                <div className="p-6 bg-primary/10 border-2 border-primary/20 rounded-xl text-center">
+                  <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-primary/20 mb-4">
+                    <Check className="h-8 w-8 text-primary" />
+                  </div>
+                  <h3 className="text-xl font-bold mb-2 text-foreground">
+                    All Questions Completed!
+                  </h3>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    You have answered all {session.quiz.totalQuestions} questions. Your test has been submitted.
+                  </p>
+                  <div className="flex flex-col sm:flex-row gap-3">
+                    <Button
+                      size="lg"
+                      variant="outline"
+                      className="flex-1 cursor-pointer"
+                      onClick={() => setShowAllQuestions(true)}
+                    >
+                      <List className="h-4 w-4 mr-2" />
+                      Review All Questions
+                    </Button>
+                    <Button
+                      size="lg"
+                      className="flex-1 cursor-pointer bg-primary hover:bg-primary/90 text-primary-foreground"
+                      onClick={() => router.push("/student/dashboard")}
+                    >
+                      <PartyPopper className="h-4 w-4 mr-2" />
+                      Test Completed and Submitted
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <Button
+                size="lg"
+                className="w-full mt-4 cursor-pointer"
+                onClick={moveToNextQuestion}
+                disabled={isMovingToNext || (session.currentQuestionIndex >= session.quiz.totalQuestions - 1)}
+              >
+                {isMovingToNext ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Loading...
+                  </>
+                ) : session.currentQuestionIndex >= session.quiz.totalQuestions - 1 ? (
+                  "All Questions Completed"
+                ) : (
+                  <>
+                    Next Question
+                    <ChevronRight className="h-4 w-4 ml-2" />
+                  </>
+                )}
+              </Button>
+            )}
           </CardContent>
         </Card>
       ) : null}
+
+      {/* All Questions Review Modal */}
+      {showAllQuestions && session.quiz.questions && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <Card className="max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+            <CardHeader className="shrink-0">
+              <div className="flex items-center justify-between">
+                <CardTitle>All Questions Review</CardTitle>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowAllQuestions(false)}
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent className="flex-1 overflow-y-auto space-y-6">
+              {session.quiz.questions.map((question, index) => (
+                <Card key={question.id} className="border-border">
+                  <CardHeader>
+                    <CardTitle className="text-lg">
+                      Question {index + 1}: {question.questionText}
+                    </CardTitle>
+                    <CardDescription>{question.points} points</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-2">
+                      {question.options.map((option, optIndex) => (
+                        <div
+                          key={option.id}
+                          className="flex items-center gap-3 p-3 rounded-lg border border-border"
+                        >
+                          <span className="w-8 h-8 rounded-lg flex items-center justify-center text-sm font-bold bg-muted">
+                            {String.fromCharCode(65 + optIndex)}
+                          </span>
+                          <span className="flex-1">{option.text}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </CardContent>
+            <div className="p-6 border-t shrink-0">
+              <Button
+                size="lg"
+                className="w-full"
+                onClick={() => {
+                  setShowAllQuestions(false);
+                  router.push("/student/dashboard");
+                }}
+              >
+                <LogOut className="h-4 w-4 mr-2" />
+                Test Completed and Submitted
+              </Button>
+            </div>
+          </Card>
+        </div>
+      )}
     </div>
   );
 }

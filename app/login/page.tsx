@@ -46,7 +46,8 @@ export default function LoginPage() {
     setIsLoading(true);
 
     try {
-      const { error } = await supabase.auth.signInWithPassword({
+      // Sign in with persistent session (30 days)
+      const { data: authData, error } = await supabase.auth.signInWithPassword({
         email: data.email,
         password: data.password,
       });
@@ -56,13 +57,19 @@ export default function LoginPage() {
         return;
       }
 
+      // Set session persistence - refresh token will be stored in cookies
+      if (authData.session) {
+        // The session is automatically persisted via cookies by Supabase SSR
+        // The middleware will handle setting proper cookie expiration
+      }
+
       // Get user profile to determine redirect
       const { data: userData } = await supabase.auth.getUser();
       if (userData.user) {
         const response = await fetch(`/api/profile/me`);
         if (response.ok) {
           const { profile } = await response.json();
-          toast.success("Welcome back!");
+          toast.success("Welcome back! You'll stay logged in for 30 days.");
 
           // Redirect based on role
           if (profile?.role === "teacher") {

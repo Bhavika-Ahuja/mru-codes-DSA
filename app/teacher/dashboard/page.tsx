@@ -36,7 +36,7 @@ export default async function TeacherDashboardPage() {
   return (
     <div className="space-y-8">
       {/* Welcome Header */}
-      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-primary/10 via-primary/5 to-transparent border border-primary/10 p-6 md:p-8">
+      <div className="relative overflow-hidden rounded-2xl bg-linear-to-br from-primary/10 via-primary/5 to-transparent border border-primary/10 p-6 md:p-8">
         <div className="absolute top-0 right-0 w-64 h-64 bg-primary/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
         <div className="relative">
           <div className="flex items-center gap-2 text-primary mb-2">

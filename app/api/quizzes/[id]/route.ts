@@ -72,3 +72,76 @@ export async function GET(
     );
   }
 }
+
+// DELETE /api/quizzes/[id] - Delete a quiz
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const profile = await getProfile();
+
+    if (!profile) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    if (profile.role !== "teacher") {
+      return NextResponse.json(
+        { error: "Only teachers can delete quizzes" },
+        { status: 403 }
+      );
+    }
+
+    const { id } = await params;
+
+    // Check if quiz exists and belongs to the teacher
+    const quiz = await prisma.quiz.findUnique({
+      where: { id },
+    });
+
+    if (!quiz) {
+      return NextResponse.json(
+        { error: "Quiz not found" },
+        { status: 404 }
+      );
+    }
+
+    if (quiz.createdById !== profile.id) {
+      return NextResponse.json(
+        { error: "You can only delete your own quizzes" },
+        { status: 403 }
+      );
+    }
+
+    // Check if there are any active sessions for this quiz
+    const activeSessions = await prisma.quizSession.count({
+      where: {
+        quizId: id,
+        status: "live",
+      },
+    });
+
+    if (activeSessions > 0) {
+      return NextResponse.json(
+        { error: "Cannot delete quiz with active sessions. Please end all sessions first." },
+        { status: 400 }
+      );
+    }
+
+    // Delete the quiz (cascade will delete questions and sessions)
+    await prisma.quiz.delete({
+      where: { id },
+    });
+
+    return NextResponse.json({
+      success: true,
+      message: "Quiz deleted successfully",
+    });
+  } catch (error) {
+    console.error("Error deleting quiz:", error);
+    return NextResponse.json(
+      { error: "Failed to delete quiz" },
+      { status: 500 }
+    );
+  }
+}

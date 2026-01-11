@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { GraduationCap, LogOut, Settings, User } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -12,7 +13,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { ThemeToggle } from "@/components/theme-toggle";
-import { useAuth } from "@/hooks/use-auth";
+import { createClient } from "@/lib/supabase/client";
+import { toast } from "sonner";
 
 interface Profile {
   id: string;
@@ -28,7 +30,21 @@ interface Profile {
 }
 
 export function DashboardHeader({ profile }: { profile: Profile }) {
-  const { signOut } = useAuth();
+  const router = useRouter();
+  const supabase = createClient();
+
+  const handleSignOut = async () => {
+    const { error } = await supabase.auth.signOut();
+
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+
+    toast.success("Signed out successfully");
+    router.push("/login");
+    router.refresh();
+  };
 
   const initials = profile.full_name
     .split(" ")
@@ -76,19 +92,25 @@ export function DashboardHeader({ profile }: { profile: Profile }) {
               </div>
               <DropdownMenuSeparator />
               <DropdownMenuItem asChild>
-                <Link href="/dashboard/profile" className="cursor-pointer">
+                <Link
+                  href={profile.role === "teacher" ? "/teacher/profile" : "/student/profile"}
+                  className="cursor-pointer"
+                >
                   <User className="mr-2 h-4 w-4" />
                   Profile
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuItem asChild>
-                <Link href="/dashboard/settings" className="cursor-pointer">
+                <Link
+                  href={profile.role === "teacher" ? "/teacher/settings" : "/student/settings"}
+                  className="cursor-pointer"
+                >
                   <Settings className="mr-2 h-4 w-4" />
                   Settings
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={signOut} className="cursor-pointer text-destructive">
+              <DropdownMenuItem onClick={handleSignOut} className="cursor-pointer text-destructive">
                 <LogOut className="mr-2 h-4 w-4" />
                 Sign out
               </DropdownMenuItem>

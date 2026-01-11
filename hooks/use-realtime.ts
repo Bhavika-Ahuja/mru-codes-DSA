@@ -69,7 +69,8 @@ export function useQuizSessionRealtime(sessionId: string) {
   const broadcastQuestionChange = useCallback(
     async (questionIndex: number) => {
       const channel = supabase.channel(`quiz-session-${sessionId}`);
-      await channel.send({
+      await channel.subscribe();
+      await channel.httpSend({
         type: "broadcast",
         event: "question_change",
         payload: {
@@ -83,7 +84,8 @@ export function useQuizSessionRealtime(sessionId: string) {
 
   const broadcastSessionEnd = useCallback(async () => {
     const channel = supabase.channel(`quiz-session-${sessionId}`);
-    await channel.send({
+    await channel.subscribe();
+    await channel.httpSend({
       type: "broadcast",
       event: "session_end",
       payload: {},
@@ -93,7 +95,8 @@ export function useQuizSessionRealtime(sessionId: string) {
   const broadcastScoreUpdate = useCallback(
     async (userId: string, score: number) => {
       const channel = supabase.channel(`quiz-session-${sessionId}`);
-      await channel.send({
+      await channel.subscribe();
+      await channel.httpSend({
         type: "broadcast",
         event: "score_update",
         payload: { user_id: userId, score },

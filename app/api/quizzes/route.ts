@@ -139,7 +139,7 @@ export async function GET(request: Request) {
       where.status = status as "draft" | "published" | "archived";
     }
 
-    // Fetch quizzes with question count
+    // Fetch quizzes with question count and statistics
     const [quizzes, total] = await Promise.all([
       prisma.quiz.findMany({
         where,
@@ -155,20 +155,105 @@ export async function GET(request: Request) {
       prisma.quiz.count({ where }),
     ]);
 
+    // Get statistics for each quiz
+    const quizzesWithStats = await Promise.all(
+      quizzes.map(async (q) => {
+        // Get all sessions for this quiz
+        const sessions = await prisma.quizSession.findMany({
+          where: { quizId: q.id },
+          include: {
+            participants: {
+              select: {
+                sessionScore: true,
+                questionsAnswered: true,
+                correctAnswers: true,
+              },
+            },
+          },
+        });
+
+        // Check for live/active sessions
+        const liveSession = sessions.find((s) => s.status === "live");
+        let liveSessionInfo = null;
+        
+        if (liveSession && liveSession.startedAt && q.timeLimit) {
+          const now = new Date();
+          const startedAt = new Date(liveSession.startedAt);
+          const elapsedSeconds = Math.floor((now.getTime() - startedAt.getTime()) / 1000);
+          const timeRemaining = Math.max(0, q.timeLimit - elapsedSeconds);
+          
+          liveSessionInfo = {
+            sessionId: liveSession.id,
+            roomCode: liveSession.roomCode,
+            timeRemaining: isNaN(timeRemaining) ? 0 : timeRemaining,
+            timeLimit: q.timeLimit, // Include timeLimit for client-side calculation
+            startedAt: liveSession.startedAt.toISOString(),
+            currentQuestionIndex: liveSession.currentQuestionIndex,
+            participantCount: liveSession.participants.length,
+          };
+        }
+
+        const totalSessions = sessions.length;
+        const totalParticipants = sessions.reduce(
+          (sum, s) => sum + s.participants.length,
+          0
+        );
+        
+        // Calculate average score across all participants
+        const allScores = sessions.flatMap((s) =>
+          s.participants.map((p) => p.sessionScore)
+        );
+        const avgScore =
+          allScores.length > 0
+            ? Math.round(
+                (allScores.reduce((sum, score) => sum + score, 0) /
+                  allScores.length) *
+                  100
+              ) / 100
+            : 0;
+
+        // Calculate average accuracy
+        const allAccuracies = sessions.flatMap((s) =>
+          s.participants
+            .filter((p) => p.questionsAnswered > 0)
+            .map(
+              (p) => (p.correctAnswers / p.questionsAnswered) * 100
+            )
+        );
+        const avgAccuracy =
+          allAccuracies.length > 0
+            ? Math.round(
+                (allAccuracies.reduce((sum, acc) => sum + acc, 0) /
+                  allAccuracies.length) *
+                  100
+              ) / 100
+            : 0;
+
+        return {
+          id: q.id,
+          title: q.title,
+          description: q.description,
+          topic: q.topic,
+          difficulty: q.difficulty,
+          status: q.status,
+          totalQuestions: q._count.questions,
+          timeLimit: (q.timeLimit && !isNaN(Number(q.timeLimit)) && Number(q.timeLimit) > 0) ? Number(q.timeLimit) : 900, // Default to 15 minutes if null/undefined/invalid
+          createdAt: q.createdAt.toISOString(),
+          updatedAt: q.updatedAt.toISOString(),
+          stats: {
+            totalSessions,
+            totalParticipants,
+            avgScore,
+            avgAccuracy,
+          },
+          liveSession: liveSessionInfo,
+        };
+      })
+    );
+
     return NextResponse.json({
       success: true,
-      quizzes: quizzes.map((q) => ({
-        id: q.id,
-        title: q.title,
-        description: q.description,
-        topic: q.topic,
-        difficulty: q.difficulty,
-        status: q.status,
-        totalQuestions: q._count.questions,
-        timeLimit: q.timeLimit,
-        createdAt: q.createdAt.toISOString(),
-        updatedAt: q.updatedAt.toISOString(),
-      })),
+      quizzes: quizzesWithStats,
       pagination: {
         total,
         limit,

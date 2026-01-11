@@ -4,7 +4,6 @@ import { useEffect, useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import {
   Play,
-  SkipForward,
   Square,
   Users,
   Clock,
@@ -13,7 +12,6 @@ import {
   Check,
   Loader2,
   AlertCircle,
-  ChevronRight,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -97,7 +95,9 @@ export default function TeacherSessionPage() {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || "Failed to fetch session");
+        const errorMessage = data.error || data.details || "Failed to fetch session";
+        console.error("API Error:", errorMessage);
+        throw new Error(errorMessage);
       }
 
       if (!data.isHost) {
@@ -109,8 +109,10 @@ export default function TeacherSessionPage() {
       setSession(data.session);
     } catch (error) {
       console.error("Error fetching session:", error);
-      toast.error("Failed to load session");
-      router.push("/teacher/dashboard");
+      const errorMessage = error instanceof Error ? error.message : "Failed to load session";
+      toast.error(errorMessage);
+      // Don't redirect immediately - let user see the error
+      // router.push("/teacher/dashboard");
     } finally {
       setIsLoading(false);
     }
@@ -186,24 +188,31 @@ export default function TeacherSessionPage() {
         throw new Error(data.error || "Action failed");
       }
 
-      // Broadcast the change for realtime
+      // Broadcast the change for realtime (client-side - use httpSend to avoid deprecation warning)
       if (action === "start" || action === "next_question") {
-        await supabase.channel(`quiz-session-${sessionId}`).send({
-          type: "broadcast",
-          event: "question_change",
-          payload: {
+        const channel = supabase.channel(`quiz-session-${sessionId}`);
+        await channel.subscribe();
+        await (channel.httpSend as (
+          event: string,
+          payload: Record<string, unknown>,
+          opts?: { timeout?: number }
+        ) => Promise<unknown>)(
+          "question_change",
+          {
             question_index: data.session.currentQuestionIndex,
             started_at: data.session.questionStartedAt,
-          },
-        });
+          }
+        );
       }
 
       if (action === "end" || data.session.status === "completed") {
-        await supabase.channel(`quiz-session-${sessionId}`).send({
-          type: "broadcast",
-          event: "session_end",
-          payload: {},
-        });
+        const channel = supabase.channel(`quiz-session-${sessionId}`);
+        await channel.subscribe();
+        await (channel.httpSend as (
+          event: string,
+          payload: Record<string, unknown>,
+          opts?: { timeout?: number }
+        ) => Promise<unknown>)("session_end", {});
         toast.success("Quiz ended!");
       }
 
@@ -247,8 +256,6 @@ export default function TeacherSessionPage() {
 
   const currentQuestion =
     session.status === "live" && session.quiz.questions[session.currentQuestionIndex];
-  const isLastQuestion =
-    session.currentQuestionIndex >= session.quiz.totalQuestions - 1;
 
   return (
     <div className="max-w-6xl mx-auto space-y-6">
@@ -282,15 +289,15 @@ export default function TeacherSessionPage() {
               session.status === "waiting"
                 ? "bg-amber-500/10 text-amber-600"
                 : session.status === "live"
-                ? "bg-green-500/10 text-green-600"
-                : "bg-muted text-muted-foreground"
+                  ? "bg-green-500/10 text-green-600"
+                  : "bg-muted text-muted-foreground"
             }
           >
             {session.status === "waiting"
               ? "Waiting"
               : session.status === "live"
-              ? "Live"
-              : "Completed"}
+                ? "Live"
+                : "Completed"}
           </Badge>
         </div>
       </div>
@@ -368,18 +375,20 @@ export default function TeacherSessionPage() {
                     </div>
                     <div className="flex items-center gap-2">
                       <Clock
-                        className={`h-5 w-5 ${
-                          timeRemaining <= 5
-                            ? "text-red-500"
-                            : "text-muted-foreground"
-                        }`}
+                        className={`h-5 w-5 ${timeRemaining <= 5
+                          ? "text-red-500"
+                          : "text-muted-foreground"
+                          }`}
                       />
                       <span
-                        className={`text-2xl font-mono font-bold ${
-                          timeRemaining <= 5 ? "text-red-500" : ""
-                        }`}
+                        className={`text-2xl font-mono font-bold ${timeRemaining <= 60 ? "text-red-500" : ""
+                          }`}
                       >
-                        {timeRemaining}s
+                        {(() => {
+                          const mins = Math.floor(timeRemaining / 60);
+                          const secs = timeRemaining % 60;
+                          return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
+                        })()}
                       </span>
                     </div>
                   </div>
@@ -400,11 +409,10 @@ export default function TeacherSessionPage() {
                       {currentQuestion.options.map((option, index) => (
                         <div
                           key={option.id}
-                          className={`flex items-center gap-3 p-4 rounded-lg border ${
-                            option.is_correct
-                              ? "border-green-500 bg-green-500/5"
-                              : "border-border"
-                          }`}
+                          className={`flex items-center gap-3 p-4 rounded-lg border ${option.is_correct
+                            ? "border-green-500 bg-green-500/5"
+                            : "border-border"
+                            }`}
                         >
                           <span className="w-8 h-8 rounded-lg bg-background flex items-center justify-center text-sm font-medium">
                             {String.fromCharCode(65 + index)}
@@ -428,26 +436,8 @@ export default function TeacherSessionPage() {
                       <Square className="h-4 w-4 mr-2" />
                       End Quiz
                     </Button>
-                    <Button
-                      onClick={() => performAction("next_question")}
-                      disabled={isActionLoading}
-                      className="gap-2"
-                    >
-                      {isActionLoading ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : isLastQuestion ? (
-                        <>
-                          Finish Quiz
-                          <Check className="h-4 w-4" />
-                        </>
-                      ) : (
-                        <>
-                          Next Question
-                          <ChevronRight className="h-4 w-4" />
-                        </>
-                      )}
-                    </Button>
                   </div>
+
                 </div>
               )}
 

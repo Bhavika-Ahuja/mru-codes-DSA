@@ -35,11 +35,11 @@ export default async function StudentLayout({
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="h-screen bg-background flex flex-col">
       <DashboardHeader profile={profileData} />
-      <div className="flex">
+      <div className="flex flex-1 min-h-0">
         <DashboardNav role={profile.role} />
-        <main className="flex-1 p-4 pb-24 lg:p-8 lg:pb-8">{children}</main>
+        <main className="flex-1 p-4 pb-24 lg:p-8 lg:pb-8 overflow-y-auto min-w-0">{children}</main>
       </div>
       <MobileNav role={profile.role} />
     </div>
