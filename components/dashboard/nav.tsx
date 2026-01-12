@@ -11,6 +11,11 @@ import {
   PlusCircle,
   BarChart3,
   Users,
+  Database,
+  Lightbulb,
+  Shield,
+  Clock,
+  FileSpreadsheet,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -18,6 +23,8 @@ const studentNav = [
   { href: "/student/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/student/learn", label: "Learn", icon: BookOpen },
   { href: "/student/quiz/join", label: "Join Quiz", icon: Zap },
+  { href: "/student/study-recommendations", label: "Study Tips", icon: Lightbulb },
+  { href: "/student/quiz-history", label: "Quiz History", icon: Clock },
   { href: "/student/assignments", label: "Assignments", icon: FileText },
   { href: "/student/performance", label: "My Performance", icon: BarChart3 },
   { href: "/student/leaderboard", label: "Leaderboard", icon: Trophy },
@@ -27,8 +34,11 @@ const teacherNav = [
   { href: "/teacher/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/teacher/quizzes", label: "My Quizzes", icon: Zap },
   { href: "/teacher/quizzes/create", label: "Create Quiz", icon: PlusCircle },
+  { href: "/teacher/question-bank", label: "Question Bank", icon: Database },
+  { href: "/teacher/cheating-detection", label: "Cheating Detection", icon: Shield },
   { href: "/teacher/assignments", label: "Assignments", icon: FileText },
   { href: "/teacher/performance", label: "Student Performance", icon: Users },
+  { href: "/teacher/export-reports", label: "Export Reports", icon: FileSpreadsheet },
   { href: "/teacher/leaderboard", label: "Leaderboard", icon: Trophy },
 ];
 

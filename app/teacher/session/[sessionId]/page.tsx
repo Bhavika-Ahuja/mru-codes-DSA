@@ -138,6 +138,10 @@ export default function TeacherSessionPage() {
         // Refetch to get updated scores
         fetchSession();
       })
+      .on("broadcast", { event: "time_extended" }, () => {
+        // Refetch to get updated startedAt
+        fetchSession();
+      })
       .subscribe();
 
     return () => {
@@ -173,7 +177,7 @@ export default function TeacherSessionPage() {
   }, [session]);
 
   // Session actions
-  const performAction = async (action: "start" | "next_question" | "end") => {
+  const performAction = useCallback(async (action: "start" | "next_question" | "end") => {
     setIsActionLoading(true);
     try {
       const response = await fetch(`/api/sessions/${sessionId}`, {
@@ -222,6 +226,52 @@ export default function TeacherSessionPage() {
       console.error("Error performing action:", error);
       toast.error(
         error instanceof Error ? error.message : "Action failed"
+      );
+    } finally {
+      setIsActionLoading(false);
+    }
+  }, [sessionId, supabase, fetchSession]);
+
+  // Auto-end quiz when time reaches 0
+  useEffect(() => {
+    if (
+      session &&
+      session.status === "live" &&
+      timeRemaining === 0 &&
+      session.startedAt
+    ) {
+      // Small delay to ensure timer has updated
+      const timeout = setTimeout(() => {
+        performAction("end");
+      }, 1000);
+      return () => clearTimeout(timeout);
+    }
+  }, [timeRemaining, session, performAction]);
+
+  // Add time to the session
+  const addTime = async (seconds: number) => {
+    setIsActionLoading(true);
+    try {
+      const response = await fetch(`/api/sessions/${sessionId}/add-time`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ seconds }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to add time");
+      }
+
+      toast.success(`Added ${Math.floor(seconds / 60)} minute(s) to the quiz!`);
+      
+      // Refetch session to get updated startedAt
+      await fetchSession();
+    } catch (error) {
+      console.error("Error adding time:", error);
+      toast.error(
+        error instanceof Error ? error.message : "Failed to add time"
       );
     } finally {
       setIsActionLoading(false);
@@ -373,23 +423,35 @@ export default function TeacherSessionPage() {
                         {session.quiz.totalQuestions}
                       </Badge>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <Clock
-                        className={`h-5 w-5 ${timeRemaining <= 5
-                          ? "text-red-500"
-                          : "text-muted-foreground"
-                          }`}
-                      />
-                      <span
-                        className={`text-2xl font-mono font-bold ${timeRemaining <= 60 ? "text-red-500" : ""
-                          }`}
+                    <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-2">
+                        <Clock
+                          className={`h-5 w-5 ${timeRemaining <= 5
+                            ? "text-red-500"
+                            : "text-muted-foreground"
+                            }`}
+                        />
+                        <span
+                          className={`text-2xl font-mono font-bold ${timeRemaining <= 60 ? "text-red-500" : ""
+                            }`}
+                        >
+                          {(() => {
+                            const mins = Math.floor(timeRemaining / 60);
+                            const secs = timeRemaining % 60;
+                            return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
+                          })()}
+                        </span>
+                      </div>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => addTime(60)}
+                        disabled={isActionLoading}
+                        className="gap-2"
                       >
-                        {(() => {
-                          const mins = Math.floor(timeRemaining / 60);
-                          const secs = timeRemaining % 60;
-                          return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
-                        })()}
-                      </span>
+                        <Clock className="h-4 w-4" />
+                        +1 min
+                      </Button>
                     </div>
                   </div>
 

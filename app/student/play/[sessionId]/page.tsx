@@ -29,6 +29,8 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { createClient } from "@/lib/supabase/client";
+import { useAntiCheat } from "@/hooks/use-anti-cheat";
+import { useFullscreenCheck } from "@/hooks/use-fullscreen-check";
 
 interface QuestionOption {
   id: string;
@@ -94,6 +96,101 @@ export default function StudentPlayPage() {
   const [currentQuestionId, setCurrentQuestionId] = useState<string | null>(null);
   const [isMovingToNext, setIsMovingToNext] = useState(false);
   const [showAllQuestions, setShowAllQuestions] = useState(false);
+  const [fullscreenGranted, setFullscreenGranted] = useState(false);
+  const [fullscreenWarningTimer, setFullscreenWarningTimer] = useState(0);
+
+  // Use screenfull library for reliable fullscreen detection
+  const { isFullscreen, isSupported, requestFullscreen } = useFullscreenCheck();
+
+  // Countdown timer for fullscreen warning (15 seconds)
+  useEffect(() => {
+    if (session?.status === "live" && fullscreenGranted && !isFullscreen) {
+      setFullscreenWarningTimer(15); // 15 second countdown
+      const interval = setInterval(() => {
+        setFullscreenWarningTimer((prev) => {
+          if (prev <= 1) {
+            clearInterval(interval);
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+
+      return () => clearInterval(interval);
+    } else {
+      setFullscreenWarningTimer(0);
+    }
+  }, [session?.status, fullscreenGranted, isFullscreen]);
+
+  // Submit answer
+  const submitAnswer = useCallback(async () => {
+    if (!session?.currentQuestion || !selectedOption || hasAnswered) return;
+
+    setIsSubmitting(true);
+    setHasAnswered(true);
+
+    try {
+      const response = await fetch(`/api/sessions/${sessionId}/submit`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          questionId: session.currentQuestion.id,
+          selectedOptionId: selectedOption,
+          timeTaken: session.quiz.timeLimit - timeRemaining,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to submit answer");
+      }
+
+      setSubmissionResult(data.submission);
+      setTotalScore((prev) => prev + data.submission.score);
+
+      if (data.submission.isCorrect) {
+        toast.success(`Correct! +${data.submission.score} points`);
+      } else {
+        toast.error("Incorrect answer");
+      }
+    } catch (error) {
+      console.error("Error submitting answer:", error);
+      toast.error(
+        error instanceof Error ? error.message : "Failed to submit"
+      );
+      setHasAnswered(false);
+    } finally {
+      setIsSubmitting(false);
+    }
+  }, [session, selectedOption, hasAnswered, sessionId, timeRemaining]);
+
+  // Anti-cheat system
+  const handleViolation = useCallback(
+    (type: string) => {
+      if (type === "max_violations" && session?.status === "live") {
+        // Auto-submit current answer if available and exit
+        if (selectedOption && !hasAnswered) {
+          submitAnswer();
+        }
+        // Redirect after a delay
+        setTimeout(() => {
+          toast.error("Quiz terminated due to multiple violations.");
+          router.push("/student/dashboard");
+        }, 2000);
+      }
+    },
+    [session, selectedOption, hasAnswered, submitAnswer, router]
+  );
+
+  // Only enable anti-cheat when quiz is live and fullscreen is granted
+  const { violationCount } = useAntiCheat({
+    sessionId,
+    enableFullscreen: session?.status === "live" && fullscreenGranted,
+    maxViolations: 15, // More lenient
+    isActive: session?.status === "live" && fullscreenGranted,
+    onViolation: handleViolation,
+  });
 
   // Fetch session data
   const fetchSession = useCallback(async () => {
@@ -109,12 +206,6 @@ export default function StudentPlayPage() {
       setHasJoined(data.isParticipant);
 
       // Reset answer state on new question if question changed
-      if (data.session.currentQuestion?.id !== currentQuestionId) {
-        setSelectedOption(null);
-        setHasAnswered(false);
-        setSubmissionResult(null);
-        setCurrentQuestionId(data.session.currentQuestion?.id || null);
-      }
       if (data.session.currentQuestion?.id !== currentQuestionId) {
         setCurrentQuestionId(data.session.currentQuestion?.id || null);
         setSelectedOption(null);
@@ -134,6 +225,20 @@ export default function StudentPlayPage() {
     fetchSession();
   }, [fetchSession]);
 
+  // Check fullscreen status periodically when quiz is live
+  useEffect(() => {
+    if (session?.status === "live") {
+      const checkInterval = setInterval(() => {
+        if (isFullscreen && !fullscreenGranted) {
+          setFullscreenGranted(true);
+          toast.success("Fullscreen detected! Quiz can now start.");
+        }
+      }, 1000); // Check every second
+
+      return () => clearInterval(checkInterval);
+    }
+  }, [session?.status, isFullscreen, fullscreenGranted]);
+
   // Subscribe to realtime updates
   useEffect(() => {
     const channel = supabase
@@ -148,6 +253,11 @@ export default function StudentPlayPage() {
       .on("broadcast", { event: "session_end" }, () => {
         toast.success("Quiz has ended!");
         fetchSession();
+      })
+      .on("broadcast", { event: "time_extended" }, (payload) => {
+        // Time was extended, refetch to get updated startedAt
+        fetchSession();
+        toast.success(`Quiz time extended by ${Math.floor((payload.payload.seconds_added as number) / 60)} minute(s)!`);
       })
       .subscribe();
 
@@ -203,7 +313,7 @@ export default function StudentPlayPage() {
       const elapsed = now - startTime;
       const remaining = Math.max(0, Math.ceil((duration - elapsed) / 1000));
       setTimeRemaining(remaining);
-      
+
       // Auto-end quiz when time runs out (this will be handled by the teacher)
       if (remaining === 0) {
         setTimeRemaining(0);
@@ -222,7 +332,7 @@ export default function StudentPlayPage() {
     try {
       // Check if geolocation is required
       let locationData: { latitude?: number; longitude?: number } = {};
-      
+
       if (session?.quiz.geolocationEnabled) {
         try {
           const position = await new Promise<GeolocationPosition>((resolve, reject) => {
@@ -280,48 +390,6 @@ export default function StudentPlayPage() {
     }
   };
 
-  // Submit answer
-  const submitAnswer = async () => {
-    if (!session?.currentQuestion || !selectedOption || hasAnswered) return;
-
-    setIsSubmitting(true);
-    setHasAnswered(true);
-
-    try {
-      const response = await fetch(`/api/sessions/${sessionId}/submit`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          questionId: session.currentQuestion.id,
-          selectedOptionId: selectedOption,
-          timeTaken: session.quiz.timeLimit - timeRemaining,
-        }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || "Failed to submit answer");
-      }
-
-      setSubmissionResult(data.submission);
-      setTotalScore((prev) => prev + data.submission.score);
-
-      if (data.submission.isCorrect) {
-        toast.success(`Correct! +${data.submission.score} points`);
-      } else {
-        toast.error("Incorrect answer");
-      }
-    } catch (error) {
-      console.error("Error submitting answer:", error);
-      toast.error(
-        error instanceof Error ? error.message : "Failed to submit"
-      );
-      setHasAnswered(false);
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
 
   // Move to next question
   const moveToNextQuestion = async () => {
@@ -522,6 +590,114 @@ export default function StudentPlayPage() {
     );
   }
 
+  // Fullscreen requirement screen (before quiz starts)
+  if (session && session.status === "live" && !fullscreenGranted) {
+    const getDifficultyColor = (difficulty: string) => {
+      switch (difficulty) {
+        case "easy":
+          return "bg-green-500/10 text-green-600 border-green-500/20";
+        case "medium":
+          return "bg-amber-500/10 text-amber-600 border-amber-500/20";
+        case "hard":
+          return "bg-red-500/10 text-red-600 border-red-500/20";
+        default:
+          return "";
+      }
+    };
+
+    return (
+      <div className="max-w-2xl mx-auto">
+        <Card className="border-2 border-primary/30">
+          <CardHeader className="text-center">
+            <CardTitle className="text-2xl mb-2">Ready to Start Quiz?</CardTitle>
+            <CardDescription>
+              Review quiz details and enable fullscreen to begin
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            {/* Quiz Information */}
+            <div className="p-6 bg-primary/5 border border-primary/20 rounded-lg space-y-4">
+              <h3 className="font-semibold text-lg mb-3">Quiz Information</h3>
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <div>
+                  <p className="text-muted-foreground">Quiz Title</p>
+                  <p className="font-semibold">{session.quiz.title}</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground">Topic</p>
+                  <Badge variant="outline" className="mt-1">
+                    {session.quiz.topic}
+                  </Badge>
+                </div>
+                <div>
+                  <p className="text-muted-foreground">Difficulty</p>
+                  <Badge
+                    variant="outline"
+                    className={`mt-1 ${getDifficultyColor(session.quiz.difficulty)}`}
+                  >
+                    {session.quiz.difficulty}
+                  </Badge>
+                </div>
+                <div>
+                  <p className="text-muted-foreground">Time Limit</p>
+                  <p className="font-semibold">{session.quiz.timeLimit} minutes</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground">Total Questions</p>
+                  <p className="font-semibold">{session.quiz.totalQuestions}</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground">Points per Question</p>
+                  <p className="font-semibold">10 points</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Exam Rules */}
+            <div className="p-6 bg-amber-500/10 border border-amber-500/20 rounded-lg">
+              <h3 className="font-semibold mb-3 flex items-center gap-2">
+                <AlertCircle className="h-5 w-5" />
+                Exam Rules & Guidelines:
+              </h3>
+              <ul className="space-y-2 text-sm text-left list-disc list-inside">
+                <li>Fullscreen mode is required and will be enforced</li>
+                <li>Stay focused - avoid switching tabs or windows</li>
+                <li>You&apos;ll receive warnings for rule violations</li>
+                <li>After 15 warnings, your quiz will be auto-submitted</li>
+                <li>Focus on the quiz - all activities are monitored</li>
+              </ul>
+            </div>
+
+            <div className="space-y-3">
+              <Button
+                size="lg"
+                className="w-full"
+                onClick={async () => {
+                  if (isSupported) {
+                    const success = await requestFullscreen();
+                    if (success) {
+                      setFullscreenGranted(true);
+                      toast.success("Fullscreen enabled! Quiz starting...");
+                    } else {
+                      toast.error("Please allow fullscreen permission when prompted");
+                    }
+                  } else {
+                    toast.error("Fullscreen is not supported in your browser. Please use F11 to enable fullscreen.");
+                  }
+                }}
+              >
+                Enable Fullscreen & Start Quiz
+              </Button>
+
+            </div>
+
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+
   // Live quiz - show current question
   const currentQuestion = session.currentQuestion;
 
@@ -542,7 +718,7 @@ export default function StudentPlayPage() {
     <div className="max-w-2xl mx-auto space-y-6">
       {/* Completion Banner - Show when all questions are answered */}
       {(session.questionsAnswered ?? 0) >= session.quiz.totalQuestions && (
-        <Card className="border-2 border-primary/30 bg-gradient-to-br from-primary/10 via-primary/5 to-transparent">
+        <Card className="border-2 border-primary/30 bg-linear-to-b from-primary/10 via-primary/5 to-transparent">
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">
@@ -571,6 +747,100 @@ export default function StudentPlayPage() {
         </Card>
       )}
 
+      {/* Fullscreen Warning Banner with Timer */}
+      {session.status === "live" && fullscreenGranted && !isFullscreen && (
+        <Card className="border-red-500/50 bg-red-500/10 mb-4 animate-pulse">
+          <CardContent className="pt-4 pb-4">
+            <div className="flex items-center gap-3">
+              <AlertCircle className="h-5 w-5 text-red-600 shrink-0 animate-pulse" />
+              <div className="flex-1">
+                <div className="flex items-center gap-2 mb-1">
+                  <p className="text-sm font-semibold text-red-700 dark:text-red-400">
+                    ⚠️ Fullscreen Mode Required - Warning Active
+                  </p>
+                  {fullscreenWarningTimer > 0 && (
+                    <Badge variant="destructive" className="animate-pulse">
+                      <Clock className="h-3 w-3 mr-1" />
+                      {fullscreenWarningTimer}s
+                    </Badge>
+                  )}
+                </div>
+                <p className="text-xs text-red-600 dark:text-red-500">
+                  You exited fullscreen mode. Please return to fullscreen immediately (F11) or your quiz may be auto-submitted.
+                </p>
+                {violationCount > 0 && (
+                  <p className="text-xs font-bold text-red-700 dark:text-red-400 mt-2">
+                    Violations: {violationCount} / 15 - {15 - violationCount} warnings remaining
+                  </p>
+                )}
+              </div>
+              <Button
+                size="sm"
+                variant="destructive"
+                onClick={async () => {
+                  if (isSupported) {
+                    const success = await requestFullscreen();
+                    if (success) {
+                      toast.success("Fullscreen enabled");
+                      setFullscreenWarningTimer(0);
+                    } else {
+                      toast.error("Please enable fullscreen manually (F11)");
+                    }
+                  } else {
+                    toast.error("Please press F11 to enable fullscreen");
+                  }
+                }}
+              >
+                Enable Fullscreen Now
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Violation Warning Banner */}
+      {violationCount > 0 && session.status === "live" && violationCount < 15 && (
+        <Card className={`mb-4 ${violationCount >= 12
+          ? "border-red-500/50 bg-red-500/10"
+          : violationCount >= 8
+            ? "border-orange-500/50 bg-orange-500/10"
+            : "border-amber-500/50 bg-amber-500/10"
+          }`}>
+          <CardContent className="pt-4 pb-4">
+            <div className="flex items-center gap-3">
+              <AlertCircle className={`h-5 w-5 shrink-0 ${violationCount >= 12
+                ? "text-red-600"
+                : violationCount >= 8
+                  ? "text-orange-600"
+                  : "text-amber-600"
+                }`} />
+              <div className="flex-1">
+                <p className={`text-sm font-semibold ${violationCount >= 12
+                  ? "text-red-700 dark:text-red-400"
+                  : violationCount >= 8
+                    ? "text-orange-700 dark:text-orange-400"
+                    : "text-amber-700 dark:text-amber-400"
+                  }`}>
+                  {violationCount >= 12
+                    ? "Final Warning"
+                    : violationCount >= 8
+                      ? "Warning"
+                      : "Notice"}: {violationCount} violation(s) detected
+                </p>
+                <p className={`text-xs mt-1 ${violationCount >= 12
+                  ? "text-red-600 dark:text-red-500"
+                  : violationCount >= 8
+                    ? "text-orange-600 dark:text-orange-500"
+                    : "text-amber-600 dark:text-amber-500"
+                  }`}>
+                  Please stay in fullscreen and on this page. Your quiz will be auto-submitted after {15 - violationCount} more violation(s).
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Header with timer and score */}
       <div className="flex items-center justify-between">
         <Badge variant="outline" className="text-lg px-4 py-2">
@@ -583,11 +853,10 @@ export default function StudentPlayPage() {
             <span className="font-bold">{totalScore}</span>
           </div>
           <div
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg ${
-              timeRemaining <= 60
-                ? "bg-red-500/10 text-red-500"
-                : "bg-muted"
-            }`}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg ${timeRemaining <= 60
+              ? "bg-red-500/10 text-red-500"
+              : "bg-muted"
+              }`}
           >
             <Clock className="h-5 w-5" />
             <span className="text-2xl font-mono font-bold">
@@ -647,15 +916,14 @@ export default function StudentPlayPage() {
                 disabled={hasAnswered || isSubmitting}
               >
                 <span
-                  className={`w-10 h-10 rounded-lg flex items-center justify-center text-lg font-bold ${
-                    isSelected && !hasAnswered
-                      ? "bg-primary text-primary-foreground"
-                      : isCorrect
+                  className={`w-10 h-10 rounded-lg flex items-center justify-center text-lg font-bold ${isSelected && !hasAnswered
+                    ? "bg-primary text-primary-foreground"
+                    : isCorrect
                       ? "bg-green-500 text-white"
                       : isWrong
-                      ? "bg-red-500 text-white"
-                      : "bg-muted"
-                  }`}
+                        ? "bg-red-500 text-white"
+                        : "bg-muted"
+                    }`}
                 >
                   {String.fromCharCode(65 + index)}
                 </span>

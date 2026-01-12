@@ -1,9 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import {
-  LineChart,
-  Line,
   AreaChart,
   Area,
   BarChart,
@@ -17,12 +15,6 @@ import {
   Tooltip,
   Legend,
   ResponsiveContainer,
-  LabelList,
-  RadarChart,
-  PolarGrid,
-  PolarAngleAxis,
-  PolarRadiusAxis,
-  Radar,
 } from "recharts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -36,6 +28,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Users, TrendingUp, Award, BarChart3, Download, FileSpreadsheet, Trophy, Target } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
 
 interface Student {
   id: string;
@@ -91,7 +84,6 @@ const WARNING_LIGHT = "#eab308";
 const INFO_COLOR = "#2563eb";
 const INFO_LIGHT = "#3b82f6";
 const DANGER_COLOR = "#dc2626";
-const DANGER_LIGHT = "#ef4444";
 
 const COLORS = [
   PRIMARY_COLOR,
@@ -105,16 +97,28 @@ const COLORS = [
 ];
 
 // Enhanced custom tooltip component
-const CustomTooltip = ({ active, payload, label }: any) => {
+interface TooltipPayload {
+  name: string;
+  value: number | string;
+  color: string;
+}
+
+interface CustomTooltipProps {
+  active?: boolean;
+  payload?: TooltipPayload[];
+  label?: string;
+}
+
+const CustomTooltip = ({ active, payload, label }: CustomTooltipProps) => {
   if (active && payload && payload.length) {
     return (
       <div className="bg-popover border border-border rounded-xl shadow-2xl p-4 backdrop-blur-sm">
         <p className="font-bold mb-3 text-foreground text-base border-b border-border pb-2">{label}</p>
         <div className="space-y-2">
-          {payload.map((entry: any, index: number) => (
+          {payload.map((entry: TooltipPayload, index: number) => (
             <div key={index} className="flex items-center gap-2">
-              <div 
-                className="w-3 h-3 rounded-full" 
+              <div
+                className="w-3 h-3 rounded-full"
                 style={{ backgroundColor: entry.color }}
               />
               <span className="text-sm font-medium text-muted-foreground">{entry.name}:</span>
@@ -134,24 +138,15 @@ const CustomTooltip = ({ active, payload, label }: any) => {
   return null;
 };
 
-// Custom label component for pie charts
-const CustomPieLabel = (entry: any) => {
-  return `${entry.section || entry.difficulty || entry.topic}: ${entry.students || entry.total || entry.value || 0}`;
-};
-
 export function TeacherPerformanceDashboard() {
   const [data, setData] = useState<AnalyticsData | null>(null);
   const [loading, setLoading] = useState(true);
   const [selectedSection, setSelectedSection] = useState<string>("all");
   const [selectedStudent, setSelectedStudent] = useState<string>("all");
 
-  useEffect(() => {
-    fetchAnalytics();
-  }, [selectedSection, selectedStudent]);
-
-  const fetchAnalytics = async () => {
+  const fetchAnalytics = useCallback(async () => {
+    setLoading(true);
     try {
-      setLoading(true);
       const params = new URLSearchParams();
       if (selectedSection !== "all") {
         params.append("section", selectedSection);
@@ -161,14 +156,24 @@ export function TeacherPerformanceDashboard() {
       }
 
       const response = await fetch(`/api/analytics/teacher?${params.toString()}`);
-      const result = await response.json();
-      setData(result);
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        setData(data);
+      } else {
+        toast.error(data.error || "Failed to load analytics");
+      }
     } catch (error) {
       console.error("Error fetching analytics:", error);
+      toast.error("Failed to load analytics");
     } finally {
       setLoading(false);
     }
-  };
+  }, [selectedSection, selectedStudent]);
+
+  useEffect(() => {
+    fetchAnalytics();
+  }, [fetchAnalytics]);
 
   const handleExport = async (type: string = "all") => {
     try {
@@ -181,27 +186,37 @@ export function TeacherPerformanceDashboard() {
       }
       params.append("type", type);
 
+      // Show loading toast
+      const loadingToast = toast.loading("Generating Excel report...");
+
       const response = await fetch(`/api/analytics/export?${params.toString()}`);
       if (!response.ok) {
-        throw new Error("Export failed");
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Export failed");
       }
 
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      
+
       const timestamp = new Date().toISOString().split("T")[0];
-      const filename = `analytics-report-${type}-${timestamp}.xlsx`;
+      const sectionPart = selectedSection !== "all" ? `-${selectedSection}` : "";
+      const filename = `Performance-Report${sectionPart}-${type}-${timestamp}.xlsx`;
       a.download = filename;
-      
+
       document.body.appendChild(a);
       a.click();
       window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
+
+      toast.dismiss(loadingToast);
+      toast.success(`Excel report downloaded successfully!`);
     } catch (error) {
       console.error("Error exporting data:", error);
-      alert("Failed to export data. Please try again.");
+      toast.error(
+        error instanceof Error ? error.message : "Failed to export data. Please try again."
+      );
     }
   };
 
@@ -345,11 +360,19 @@ export function TeacherPerformanceDashboard() {
         <div className="flex gap-2 flex-wrap">
           <Button
             onClick={() => handleExport("all")}
+            variant="default"
+            className="gap-2 bg-primary hover:bg-primary/90"
+          >
+            <FileSpreadsheet className="h-4 w-4" />
+            Export All Reports
+          </Button>
+          <Button
+            onClick={() => handleExport("detailed")}
             variant="outline"
             className="gap-2"
           >
             <FileSpreadsheet className="h-4 w-4" />
-            Export All
+            Detailed Report
           </Button>
           <Button
             onClick={() => handleExport("quizzes")}
@@ -357,7 +380,7 @@ export function TeacherPerformanceDashboard() {
             className="gap-2"
           >
             <Download className="h-4 w-4" />
-            Export Quizzes
+            Quiz Report
           </Button>
           <Button
             onClick={() => handleExport("assignments")}
@@ -365,7 +388,7 @@ export function TeacherPerformanceDashboard() {
             className="gap-2"
           >
             <Download className="h-4 w-4" />
-            Export Assignments
+            Assignment Report
           </Button>
           <Button
             onClick={() => handleExport("performance")}
@@ -373,14 +396,14 @@ export function TeacherPerformanceDashboard() {
             className="gap-2"
           >
             <Download className="h-4 w-4" />
-            Export Performance
+            Performance Report
           </Button>
         </div>
       </div>
 
       {/* Overview Stats with Enhanced Design */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <Card className="border-2 border-primary/20 bg-gradient-to-br from-primary/5 to-transparent hover:border-primary/40 transition-all duration-300 hover:shadow-lg">
+        <Card className="border-2 border-primary/20 bg-linear-to-br from-primary/5 to-transparent hover:border-primary/40 transition-all duration-300 hover:shadow-lg">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium">Total Students</CardTitle>
             <div className="p-2 bg-primary/10 rounded-lg">
@@ -388,14 +411,14 @@ export function TeacherPerformanceDashboard() {
             </div>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent">
+            <div className="text-3xl font-bold bg-linear-to-r from-primary to-primary/70 bg-clip-text text-transparent">
               {students.length}
             </div>
             <p className="text-xs text-muted-foreground mt-2">Active students</p>
           </CardContent>
         </Card>
 
-        <Card className="border-2 border-amber-500/20 bg-gradient-to-br from-amber-500/5 to-transparent hover:border-amber-500/40 transition-all duration-300 hover:shadow-lg">
+        <Card className="border-2 border-amber-500/20 bg-linear-to-br from-amber-500/5 to-transparent hover:border-amber-500/40 transition-all duration-300 hover:shadow-lg">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium">Avg Score</CardTitle>
             <div className="p-2 bg-amber-500/10 rounded-lg">
@@ -403,19 +426,19 @@ export function TeacherPerformanceDashboard() {
             </div>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold bg-gradient-to-r from-amber-600 to-amber-400 bg-clip-text text-transparent">
+            <div className="text-3xl font-bold bg-linear-to-r from-amber-600 to-amber-400 bg-clip-text text-transparent">
               {students.length > 0
                 ? Math.round(
-                    (students.reduce((sum, s) => sum + s.metrics.avgScore, 0) / students.length) *
-                      100
-                  ) / 100
+                  (students.reduce((sum, s) => sum + s.metrics.avgScore, 0) / students.length) *
+                  100
+                ) / 100
                 : 0}
             </div>
             <p className="text-xs text-muted-foreground mt-2">Class average</p>
           </CardContent>
         </Card>
 
-        <Card className="border-2 border-green-500/20 bg-gradient-to-br from-green-500/5 to-transparent hover:border-green-500/40 transition-all duration-300 hover:shadow-lg">
+        <Card className="border-2 border-green-500/20 bg-linear-to-br from-green-500/5 to-transparent hover:border-green-500/40 transition-all duration-300 hover:shadow-lg">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium">Avg Accuracy</CardTitle>
             <div className="p-2 bg-green-500/10 rounded-lg">
@@ -423,12 +446,12 @@ export function TeacherPerformanceDashboard() {
             </div>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold bg-gradient-to-r from-green-600 to-green-400 bg-clip-text text-transparent">
+            <div className="text-3xl font-bold bg-linear-to-r from-green-600 to-green-400 bg-clip-text text-transparent">
               {students.length > 0
                 ? Math.round(
-                    (students.reduce((sum, s) => sum + s.metrics.avgAccuracy, 0) / students.length) *
-                      100
-                  ) / 100
+                  (students.reduce((sum, s) => sum + s.metrics.avgAccuracy, 0) / students.length) *
+                  100
+                ) / 100
                 : 0}
               %
             </div>
@@ -436,7 +459,7 @@ export function TeacherPerformanceDashboard() {
           </CardContent>
         </Card>
 
-        <Card className="border-2 border-blue-500/20 bg-gradient-to-br from-blue-500/5 to-transparent hover:border-blue-500/40 transition-all duration-300 hover:shadow-lg">
+        <Card className="border-2 border-blue-500/20 bg-linear-to-br from-blue-500/5 to-transparent hover:border-blue-500/40 transition-all duration-300 hover:shadow-lg">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium">Total Sessions</CardTitle>
             <div className="p-2 bg-blue-500/10 rounded-lg">
@@ -444,7 +467,7 @@ export function TeacherPerformanceDashboard() {
             </div>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-blue-400 bg-clip-text text-transparent">
+            <div className="text-3xl font-bold bg-linear-to-r from-blue-600 to-blue-400 bg-clip-text text-transparent">
               {students.reduce((sum, s) => sum + s.metrics.totalSessions, 0)}
             </div>
             <p className="text-xs text-muted-foreground mt-2">All quiz sessions</p>
@@ -484,14 +507,14 @@ export function TeacherPerformanceDashboard() {
                       </linearGradient>
                     </defs>
                     <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.2} />
-                    <XAxis 
-                      dataKey="name" 
+                    <XAxis
+                      dataKey="name"
                       stroke="hsl(var(--foreground))"
                       tick={{ fill: "hsl(var(--foreground))" }}
                       style={{ fontSize: "12px", fontWeight: 500 }}
                       tickLine={{ stroke: "hsl(var(--foreground))" }}
                     />
-                    <YAxis 
+                    <YAxis
                       stroke="hsl(var(--foreground))"
                       tick={{ fill: "hsl(var(--foreground))" }}
                       style={{ fontSize: "12px", fontWeight: 500 }}
@@ -499,8 +522,8 @@ export function TeacherPerformanceDashboard() {
                       label={{ value: "Total Score", angle: -90, position: "insideLeft", style: { fontSize: "12px", fill: "hsl(var(--foreground))" } }}
                     />
                     <Tooltip content={<CustomTooltip />} />
-                    <Bar 
-                      dataKey="score" 
+                    <Bar
+                      dataKey="score"
                       fill={`url(#scoreGradient)`}
                       name="Total Score"
                       radius={[12, 12, 0, 0]}
@@ -533,14 +556,14 @@ export function TeacherPerformanceDashboard() {
                       </linearGradient>
                     </defs>
                     <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.2} />
-                    <XAxis 
-                      dataKey="name" 
+                    <XAxis
+                      dataKey="name"
                       stroke="hsl(var(--foreground))"
                       tick={{ fill: "hsl(var(--foreground))" }}
                       style={{ fontSize: "12px", fontWeight: 500 }}
                       tickLine={{ stroke: "hsl(var(--foreground))" }}
                     />
-                    <YAxis 
+                    <YAxis
                       stroke="hsl(var(--foreground))"
                       tick={{ fill: "hsl(var(--foreground))" }}
                       style={{ fontSize: "12px", fontWeight: 500 }}
@@ -549,8 +572,8 @@ export function TeacherPerformanceDashboard() {
                       label={{ value: "Accuracy %", angle: -90, position: "insideLeft", style: { fontSize: "12px", fill: "hsl(var(--foreground))" } }}
                     />
                     <Tooltip content={<CustomTooltip />} />
-                    <Bar 
-                      dataKey="accuracy" 
+                    <Bar
+                      dataKey="accuracy"
                       fill={`url(#accuracyGradient)`}
                       name="Accuracy %"
                       radius={[12, 12, 0, 0]}
@@ -593,14 +616,14 @@ export function TeacherPerformanceDashboard() {
                         </linearGradient>
                       </defs>
                       <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.2} />
-                      <XAxis 
-                        dataKey="section" 
+                      <XAxis
+                        dataKey="section"
                         stroke="hsl(var(--foreground))"
                         tick={{ fill: "hsl(var(--foreground))" }}
                         style={{ fontSize: "12px", fontWeight: 500 }}
                         tickLine={{ stroke: "hsl(var(--foreground))" }}
                       />
-                      <YAxis 
+                      <YAxis
                         stroke="hsl(var(--foreground))"
                         tick={{ fill: "hsl(var(--foreground))" }}
                         style={{ fontSize: "12px", fontWeight: 500 }}
@@ -608,20 +631,20 @@ export function TeacherPerformanceDashboard() {
                         label={{ value: "Score / Accuracy", angle: -90, position: "insideLeft", style: { fontSize: "12px", fill: "hsl(var(--foreground))" } }}
                       />
                       <Tooltip content={<CustomTooltip />} />
-                      <Legend 
+                      <Legend
                         wrapperStyle={{ fontSize: "13px", fontWeight: 500, paddingTop: "20px", color: "hsl(var(--foreground))" }}
                         iconType="circle"
                       />
-                      <Bar 
-                        dataKey="avgScore" 
+                      <Bar
+                        dataKey="avgScore"
                         fill={`url(#sectionScoreGradient)`}
                         name="Avg Score"
                         radius={[12, 12, 0, 0]}
                         animationDuration={1200}
                         animationBegin={0}
                       />
-                      <Bar 
-                        dataKey="avgAccuracy" 
+                      <Bar
+                        dataKey="avgAccuracy"
                         fill={`url(#sectionAccuracyGradient)`}
                         name="Avg Accuracy %"
                         radius={[12, 12, 0, 0]}
@@ -651,9 +674,10 @@ export function TeacherPerformanceDashboard() {
                         cx="50%"
                         cy="50%"
                         labelLine={false}
-                        label={(entry: any) => {
-                          const percent = ((entry.students / sectionPerformance.reduce((sum, s) => sum + s.students, 0)) * 100).toFixed(0);
-                          return { value: `${entry.section}: ${percent}%`, fill: "hsl(var(--foreground))", fontSize: 12, fontWeight: 500 };
+                        label={(props: { payload?: { section: string; students: number }; percent?: number }) => {
+                          const entry = props.payload || { section: "", students: 0 };
+                          const percent = props.percent !== undefined ? (props.percent * 100).toFixed(0) : "0";
+                          return `${entry.section}: ${percent}%`;
                         }}
                         outerRadius={120}
                         innerRadius={40}
@@ -664,15 +688,15 @@ export function TeacherPerformanceDashboard() {
                         paddingAngle={2}
                       >
                         {sectionPerformance.map((entry, index) => (
-                          <Cell 
-                            key={`cell-${index}`} 
+                          <Cell
+                            key={`cell-${index}`}
                             fill={COLORS[index % COLORS.length]}
                             stroke="hsl(var(--background))"
                             strokeWidth={2}
                           />
                         ))}
                       </Pie>
-                      <Tooltip 
+                      <Tooltip
                         content={<CustomTooltip />}
                         formatter={(value: number, name: string) => {
                           if (name === "students") {
@@ -682,7 +706,7 @@ export function TeacherPerformanceDashboard() {
                           return [value, name];
                         }}
                       />
-                      <Legend 
+                      <Legend
                         wrapperStyle={{ fontSize: "13px", fontWeight: 500, paddingTop: "20px", color: "hsl(var(--foreground))" }}
                         iconType="circle"
                       />
@@ -729,8 +753,8 @@ export function TeacherPerformanceDashboard() {
                       </linearGradient>
                     </defs>
                     <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.2} />
-                    <XAxis 
-                      dataKey="topic" 
+                    <XAxis
+                      dataKey="topic"
                       angle={-45}
                       textAnchor="end"
                       height={100}
@@ -739,7 +763,7 @@ export function TeacherPerformanceDashboard() {
                       style={{ fontSize: "12px", fontWeight: 500 }}
                       tickLine={{ stroke: "hsl(var(--foreground))" }}
                     />
-                    <YAxis 
+                    <YAxis
                       stroke="hsl(var(--foreground))"
                       tick={{ fill: "hsl(var(--foreground))" }}
                       style={{ fontSize: "12px", fontWeight: 500 }}
@@ -748,8 +772,8 @@ export function TeacherPerformanceDashboard() {
                       label={{ value: "Accuracy %", angle: -90, position: "insideLeft", style: { fontSize: "12px", fill: "hsl(var(--foreground))" } }}
                     />
                     <Tooltip content={<CustomTooltip />} />
-                    <Bar 
-                      dataKey="accuracy" 
+                    <Bar
+                      dataKey="accuracy"
                       fill={`url(#topicGradient)`}
                       name="Accuracy %"
                       radius={[12, 12, 0, 0]}
@@ -799,14 +823,14 @@ export function TeacherPerformanceDashboard() {
                         </linearGradient>
                       </defs>
                       <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.2} />
-                      <XAxis 
-                        dataKey="difficulty" 
+                      <XAxis
+                        dataKey="difficulty"
                         stroke="hsl(var(--foreground))"
                         tick={{ fill: "hsl(var(--foreground))" }}
                         style={{ fontSize: "12px", fontWeight: 500 }}
                         tickLine={{ stroke: "hsl(var(--foreground))" }}
                       />
-                      <YAxis 
+                      <YAxis
                         stroke="hsl(var(--foreground))"
                         tick={{ fill: "hsl(var(--foreground))" }}
                         style={{ fontSize: "12px", fontWeight: 500 }}
@@ -815,8 +839,8 @@ export function TeacherPerformanceDashboard() {
                         label={{ value: "Accuracy %", angle: -90, position: "insideLeft", style: { fontSize: "12px", fill: "hsl(var(--foreground))" } }}
                       />
                       <Tooltip content={<CustomTooltip />} />
-                      <Bar 
-                        dataKey="accuracy" 
+                      <Bar
+                        dataKey="accuracy"
                         fill={`url(#difficultyGradient)`}
                         name="Accuracy %"
                         radius={[12, 12, 0, 0]}
@@ -846,8 +870,9 @@ export function TeacherPerformanceDashboard() {
                         cx="50%"
                         cy="50%"
                         labelLine={false}
-                        label={(entry: any) => {
-                          const percent = ((entry.total / difficultyPerformanceData.reduce((sum, d) => sum + d.total, 0)) * 100).toFixed(0);
+                        label={(props: { payload?: { difficulty: string; total: number }; percent?: number }) => {
+                          const entry = props.payload || { difficulty: "", total: 0 };
+                          const percent = props.percent !== undefined ? (props.percent * 100).toFixed(0) : "0";
                           return `${entry.difficulty}: ${percent}%`;
                         }}
                         outerRadius={120}
@@ -859,15 +884,15 @@ export function TeacherPerformanceDashboard() {
                         paddingAngle={2}
                       >
                         {difficultyPerformanceData.map((entry, index) => (
-                          <Cell 
-                            key={`cell-${index}`} 
+                          <Cell
+                            key={`cell-${index}`}
                             fill={COLORS[index % COLORS.length]}
                             stroke="hsl(var(--background))"
                             strokeWidth={2}
                           />
                         ))}
                       </Pie>
-                      <Tooltip 
+                      <Tooltip
                         content={<CustomTooltip />}
                         formatter={(value: number, name: string) => {
                           if (name === "total") {
@@ -877,7 +902,7 @@ export function TeacherPerformanceDashboard() {
                           return [value, name];
                         }}
                       />
-                      <Legend 
+                      <Legend
                         wrapperStyle={{ fontSize: "13px", fontWeight: 500, paddingTop: "20px", color: "hsl(var(--foreground))" }}
                         iconType="circle"
                       />
@@ -959,14 +984,14 @@ export function TeacherPerformanceDashboard() {
                           </linearGradient>
                         </defs>
                         <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.2} />
-                        <XAxis 
-                          dataKey="date" 
+                        <XAxis
+                          dataKey="date"
                           stroke="hsl(var(--foreground))"
                           tick={{ fill: "hsl(var(--foreground))" }}
                           style={{ fontSize: "12px", fontWeight: 500 }}
                           tickLine={{ stroke: "hsl(var(--foreground))" }}
                         />
-                        <YAxis 
+                        <YAxis
                           stroke="hsl(var(--foreground))"
                           tick={{ fill: "hsl(var(--foreground))" }}
                           style={{ fontSize: "12px", fontWeight: 500 }}
@@ -974,7 +999,7 @@ export function TeacherPerformanceDashboard() {
                           label={{ value: "Score / Accuracy", angle: -90, position: "insideLeft", style: { fontSize: "12px", fill: "hsl(var(--foreground))" } }}
                         />
                         <Tooltip content={<CustomTooltip />} />
-                        <Legend 
+                        <Legend
                           wrapperStyle={{ fontSize: "13px", fontWeight: 500, paddingTop: "20px", color: "hsl(var(--foreground))" }}
                           iconType="line"
                         />
@@ -1042,8 +1067,8 @@ export function TeacherPerformanceDashboard() {
                           </linearGradient>
                         </defs>
                         <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.2} />
-                        <XAxis 
-                          dataKey="topic" 
+                        <XAxis
+                          dataKey="topic"
                           angle={-45}
                           textAnchor="end"
                           height={100}
@@ -1051,7 +1076,7 @@ export function TeacherPerformanceDashboard() {
                           style={{ fontSize: "12px", fontWeight: 500 }}
                           tickLine={{ stroke: "hsl(var(--muted-foreground))" }}
                         />
-                        <YAxis 
+                        <YAxis
                           stroke="hsl(var(--muted-foreground))"
                           style={{ fontSize: "12px", fontWeight: 500 }}
                           domain={[0, 100]}
@@ -1059,8 +1084,8 @@ export function TeacherPerformanceDashboard() {
                           label={{ value: "Accuracy %", angle: -90, position: "insideLeft", style: { fontSize: "12px" } }}
                         />
                         <Tooltip content={<CustomTooltip />} />
-                        <Bar 
-                          dataKey="accuracy" 
+                        <Bar
+                          dataKey="accuracy"
                           fill={`url(#studentTopicGradient)`}
                           name="Accuracy %"
                           radius={[12, 12, 0, 0]}

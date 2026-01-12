@@ -10,6 +10,11 @@ import {
   FileText,
   BarChart3,
   Users,
+  Database,
+  Lightbulb,
+  Shield,
+  Clock,
+  FileSpreadsheet,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -17,6 +22,8 @@ const studentNav = [
   { href: "/student/dashboard", label: "Home", icon: LayoutDashboard },
   { href: "/student/learn", label: "Learn", icon: BookOpen },
   { href: "/student/quiz/join", label: "Quiz", icon: Zap },
+  { href: "/student/study-recommendations", label: "Tips", icon: Lightbulb },
+  { href: "/student/quiz-history", label: "History", icon: Clock },
   { href: "/student/assignments", label: "Tasks", icon: FileText },
   { href: "/student/performance", label: "Performance", icon: BarChart3 },
   { href: "/student/leaderboard", label: "Rank", icon: Trophy },
@@ -26,8 +33,11 @@ const teacherNav = [
   { href: "/teacher/dashboard", label: "Home", icon: LayoutDashboard },
   { href: "/teacher/quizzes", label: "Quizzes", icon: Zap },
   { href: "/teacher/quizzes/create", label: "Create", icon: Zap },
+  { href: "/teacher/question-bank", label: "Bank", icon: Database },
+  { href: "/teacher/cheating-detection", label: "Security", icon: Shield },
   { href: "/teacher/assignments", label: "Tasks", icon: FileText },
   { href: "/teacher/performance", label: "Students", icon: Users },
+  { href: "/teacher/export-reports", label: "Export", icon: FileSpreadsheet },
   { href: "/teacher/leaderboard", label: "Rank", icon: Trophy },
 ];
 
