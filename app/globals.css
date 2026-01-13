@@ -1,6 +1,7 @@
 @import "tailwindcss";
 
 /* Clean, minimal theme - White + Purple + Black */
+/* @theme is a valid Tailwind CSS v4 directive */
 @theme {
   /* Core colors - Keep it simple */
   --color-background: #ffffff;
@@ -167,6 +168,22 @@ body {
 
 ::-webkit-scrollbar-thumb:hover {
   background: var(--color-muted-foreground);
+}
+
+/* Hide scrollbar for mobile nav but keep functionality */
+.scrollbar-hide {
+  -ms-overflow-style: none; /* IE and Edge */
+  scrollbar-width: none; /* Firefox */
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none; /* Chrome, Safari, Opera */
+}
+
+/* Smooth scrolling for mobile */
+.scrollbar-hide {
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch; /* iOS smooth scrolling */
 }
 
 /* Focus states */
