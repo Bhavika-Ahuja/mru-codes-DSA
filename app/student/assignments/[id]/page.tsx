@@ -24,7 +24,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { FileUpload } from "@/components/ui/file-upload";
-import { toast } from "sonner";
+import toast from "react-hot-toast";
 
 interface Assignment {
   id: string;

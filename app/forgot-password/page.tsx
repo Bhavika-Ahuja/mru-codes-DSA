@@ -18,7 +18,7 @@ import {
     CardTitle,
 } from "@/components/ui/card";
 import { createClient } from "@/lib/supabase/client";
-import { toast } from "sonner";
+import toast from "react-hot-toast";
 
 const forgotPasswordSchema = z.object({
     email: z.string().email("Please enter a valid email"),

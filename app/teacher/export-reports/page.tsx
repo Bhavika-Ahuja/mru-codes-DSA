@@ -22,7 +22,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { toast } from "sonner";
+import toast from "react-hot-toast";
 
 export default function ExportReportsPage() {
   const [selectedSection, setSelectedSection] = useState<string>("all");
@@ -86,10 +86,10 @@ export default function ExportReportsPage() {
       window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
 
-      toast.dismiss(loadingToast);
-      toast.success("Excel report downloaded successfully!");
+      toast.success("Excel report downloaded successfully!", { id: loadingToast });
     } catch (error) {
       console.error("Error exporting data:", error);
+      toast.dismiss(loadingToast);
       toast.error(
         error instanceof Error ? error.message : "Failed to export data. Please try again."
       );

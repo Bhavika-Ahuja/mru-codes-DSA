@@ -26,7 +26,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { createClient } from "@/lib/supabase/client";
-import { toast } from "sonner";
+import toast from "react-hot-toast";
 
 const signupSchema = z.object({
   email: z.string().email("Please enter a valid email"),
@@ -101,6 +101,7 @@ export default function SignupPage() {
         email: data.email,
         password: data.password,
         options: {
+          emailRedirectTo: `${window.location.origin}/login`,
           data: {
             full_name: data.fullName,
             roll_number: data.rollNumber,
@@ -121,7 +122,7 @@ export default function SignupPage() {
       }
 
       if (authData.user) {
-        toast.success("Account created! Please check your email to verify.");
+        toast.success("Account created! Please check your email inbox to verify your account.", { duration: 5000 });
         router.push("/login");
       }
     } catch {

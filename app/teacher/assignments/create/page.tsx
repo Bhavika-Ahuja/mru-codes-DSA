@@ -32,7 +32,7 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { FileUpload } from "@/components/ui/file-upload";
-import { toast } from "sonner";
+import toast from "react-hot-toast";
 import Link from "next/link";
 
 const assignmentSchema = z.object({

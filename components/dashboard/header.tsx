@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { createClient } from "@/lib/supabase/client";
-import { toast } from "sonner";
+import toast from "react-hot-toast";
 
 interface Profile {
   id: string;

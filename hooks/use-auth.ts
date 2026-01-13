@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { useUser } from "@/providers/user-provider";
-import { toast } from "sonner";
+import toast from "react-hot-toast";
 import type { SignupFormData, LoginFormData } from "@/types";
 
 export function useAuth() {
@@ -18,6 +18,7 @@ export function useAuth() {
       email,
       password,
       options: {
+        emailRedirectTo: `${typeof window !== "undefined" ? window.location.origin : ""}/login`,
         data: {
           full_name,
           roll_number,
@@ -38,7 +39,7 @@ export function useAuth() {
     }
 
     if (authData.user) {
-      toast.success("Account created successfully! Please verify your email.");
+      toast.success("Account created! Please check your email inbox to verify your account.", { duration: 5000 });
       router.push("/login");
     }
 

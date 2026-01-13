@@ -174,3 +174,29 @@ body {
   outline: 2px solid var(--color-primary);
   outline-offset: 2px;
 }
+
+/* Toast width - auto size based on content */
+.react-hot-toast {
+  width: auto !important;
+  min-width: fit-content !important;
+  max-width: 356px !important;
+  background-color: white !important;
+  color: #0f0f0f !important;
+}
+
+/* Make toast icons smaller */
+.react-hot-toast svg {
+  width: 16px !important;
+  height: 16px !important;
+}
+
+.react-hot-toast [data-icon] {
+  width: 16px !important;
+  height: 16px !important;
+}
+
+/* Dark mode - keep white background for toasts */
+.dark .react-hot-toast {
+  background-color: white !important;
+  color: #0f0f0f !important;
+}

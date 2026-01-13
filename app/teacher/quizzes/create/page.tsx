@@ -17,10 +17,8 @@ import {
   GripVertical,
   AlertCircle,
   Shuffle,
-  Copy,
-  RefreshCw,
 } from "lucide-react";
-import { toast } from "sonner";
+import toast from "react-hot-toast";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -33,24 +31,18 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Switch } from "@/components/ui/switch";
 import { MapPin } from "lucide-react";
 import Link from "next/link";
+import { TopicSelector } from "@/components/ui/topic-selector";
 
 // Form schema for quiz metadata
 const quizSchema = z.object({
   title: z.string().min(3, "Title must be at least 3 characters"),
   description: z.string().optional(),
-  topic: z.string().min(2, "Topic is required"),
+  topics: z.array(z.string().min(1)).min(1, "At least one topic is required"),
   difficulty: z.enum(["easy", "medium", "hard"]),
   timeLimit: z.number().min(60).max(3600).default(900),
   geolocationEnabled: z.boolean().default(false),
@@ -70,6 +62,35 @@ interface Question {
   questionText: string;
   options: QuestionOption[];
   explanation: string;
+}
+
+// API response types
+interface ApiQuestionOption {
+  id: string;
+  text: string;
+  is_correct: boolean;
+}
+
+interface QuizQuestionResponse {
+  id: string;
+  questionText: string;
+  options: ApiQuestionOption[] | unknown;
+  explanation: string | null;
+}
+
+interface QuizApiResponse {
+  success: boolean;
+  quiz: {
+    id: string;
+    title: string;
+    description: string | null;
+    topic: string;
+    difficulty: "easy" | "medium" | "hard";
+    timeLimit: number;
+    geolocationEnabled: boolean;
+    status?: string;
+    questions: QuizQuestionResponse[];
+  };
 }
 
 const DSA_TOPICS = [
@@ -116,6 +137,7 @@ export default function CreateQuizPage() {
   } = useForm<QuizFormData>({
     resolver: zodResolver(quizSchema),
     defaultValues: {
+      topics: [],
       difficulty: "medium",
       timeLimit: 900,
       geolocationEnabled: false,
@@ -123,7 +145,7 @@ export default function CreateQuizPage() {
   });
 
   const selectedDifficulty = watch("difficulty");
-  const selectedTopic = watch("topic");
+  const selectedTopics = watch("topics") || [];
   const timeLimitMinutes = Math.floor((watch("timeLimit") || 900) / 60);
 
   // Load quiz for editing/cloning
@@ -138,39 +160,52 @@ export default function CreateQuizPage() {
     setIsLoadingQuiz(true);
     try {
       const response = await fetch(`/api/quizzes/${quizId}`);
-      const data = await response.json();
+      const data = (await response.json()) as QuizApiResponse | { error: string };
 
-      if (!response.ok) {
-        throw new Error(data.error || "Failed to load quiz");
+      if (!response.ok || "error" in data) {
+        throw new Error("error" in data ? data.error : "Failed to load quiz");
       }
 
       const quiz = data.quiz;
-      
+
       // Set form values
       setValue("title", quiz.title);
       setValue("description", quiz.description || "");
-      setValue("topic", quiz.topic);
+      // Parse topics - handle both comma-separated string and array
+      const topics = Array.isArray(quiz.topic)
+        ? quiz.topic
+        : typeof quiz.topic === "string"
+          ? quiz.topic.split(",").map((t) => t.trim()).filter(Boolean)
+          : [quiz.topic || ""].filter(Boolean);
+      setValue("topics", topics);
       setValue("difficulty", quiz.difficulty);
       setValue("timeLimit", quiz.timeLimit);
       setValue("geolocationEnabled", quiz.geolocationEnabled || false);
 
       // Transform questions
-      const loadedQuestions: Question[] = quiz.questions.map((q: any) => ({
-        id: `q-${Date.now()}-${q.id}`,
-        questionText: q.questionText,
-        options: (q.options as any[]).map((opt: any, optIndex: number) => ({
-          id: opt.id || String.fromCharCode(97 + optIndex),
-          text: opt.text,
-          isCorrect: opt.is_correct || false,
-        })),
-        explanation: q.explanation || "",
-      }));
+      const loadedQuestions: Question[] = quiz.questions.map((q, qIndex) => {
+        // Type guard for options
+        const optionsArray = Array.isArray(q.options)
+          ? q.options as ApiQuestionOption[]
+          : [];
+
+        return {
+          id: `q-${Date.now()}-${q.id}-${qIndex}`,
+          questionText: q.questionText,
+          options: optionsArray.map((opt, optIndex) => ({
+            id: opt.id || String.fromCharCode(97 + optIndex),
+            text: opt.text,
+            isCorrect: opt.is_correct ?? false,
+          })),
+          explanation: q.explanation || "",
+        };
+      });
 
       setQuestions(loadedQuestions);
       setQuizData({
         title: quiz.title,
         description: quiz.description,
-        topic: quiz.topic,
+        topics: topics,
         difficulty: quiz.difficulty,
         timeLimit: quiz.timeLimit,
         geolocationEnabled: quiz.geolocationEnabled || false,
@@ -207,7 +242,7 @@ export default function CreateQuizPage() {
         if (q.id === questionId) {
           const shuffled = [...q.options];
           const correctOption = shuffled.find((opt) => opt.isCorrect);
-          
+
           // Fisher-Yates shuffle
           for (let i = shuffled.length - 1; i > 0; i--) {
             const j = Math.floor(Math.random() * (i + 1));
@@ -236,7 +271,7 @@ export default function CreateQuizPage() {
       prev.map((q) => {
         const shuffled = [...q.options];
         const correctOption = shuffled.find((opt) => opt.isCorrect);
-        
+
         for (let i = shuffled.length - 1; i > 0; i--) {
           const j = Math.floor(Math.random() * (i + 1));
           [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
@@ -268,7 +303,7 @@ export default function CreateQuizPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          topic: quizData.topic,
+          topic: quizData.topics.join(", "),
           difficulty: quizData.difficulty,
           count,
         }),
@@ -313,7 +348,7 @@ export default function CreateQuizPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          topic: data.topic,
+          topic: data.topics.join(", "),
           difficulty: data.difficulty,
           count: 5,
         }),
@@ -381,11 +416,11 @@ export default function CreateQuizPage() {
       prev.map((q) =>
         q.id === questionId
           ? {
-              ...q,
-              options: q.options.map((opt) =>
-                opt.id === optionId ? { ...opt, [field]: value } : opt
-              ),
-            }
+            ...q,
+            options: q.options.map((opt) =>
+              opt.id === optionId ? { ...opt, [field]: value } : opt
+            ),
+          }
           : q
       )
     );
@@ -397,12 +432,12 @@ export default function CreateQuizPage() {
       prev.map((q) =>
         q.id === questionId
           ? {
-              ...q,
-              options: q.options.map((opt) => ({
-                ...opt,
-                isCorrect: opt.id === optionId,
-              })),
-            }
+            ...q,
+            options: q.options.map((opt) => ({
+              ...opt,
+              isCorrect: opt.id === optionId,
+            })),
+          }
           : q
       )
     );
@@ -463,7 +498,7 @@ export default function CreateQuizPage() {
           quiz: {
             title: quizData.title,
             description: quizData.description,
-            topic: quizData.topic,
+            topic: quizData.topics.join(", "),
             difficulty: quizData.difficulty,
             timeLimit: quizData.timeLimit,
             geolocationEnabled: quizData.geolocationEnabled || false,
@@ -540,7 +575,7 @@ export default function CreateQuizPage() {
         {/* Mode Selection */}
         <div className="grid gap-6 md:grid-cols-2 mt-8">
           {/* AI Mode */}
-          <Card 
+          <Card
             className="cursor-pointer hover:border-primary/50 transition-all hover:shadow-lg group"
             onClick={() => setMode("ai")}
           >
@@ -574,7 +609,7 @@ export default function CreateQuizPage() {
           </Card>
 
           {/* Manual Mode */}
-          <Card 
+          <Card
             className="cursor-pointer hover:border-primary/50 transition-all hover:shadow-lg group"
             onClick={() => setMode("manual")}
           >
@@ -629,7 +664,7 @@ export default function CreateQuizPage() {
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Create Quiz</h1>
           <p className="text-muted-foreground">
-            {mode === "ai" 
+            {mode === "ai"
               ? step === "form"
                 ? "Set up your quiz and generate questions with AI"
                 : "Review and edit your questions before saving"
@@ -644,11 +679,10 @@ export default function CreateQuizPage() {
       {/* Progress indicator */}
       <div className="flex items-center gap-2">
         <div
-          className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
-            step === "form"
-              ? "bg-primary text-primary-foreground"
-              : "bg-muted text-muted-foreground"
-          }`}
+          className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${step === "form"
+            ? "bg-primary text-primary-foreground"
+            : "bg-muted text-muted-foreground"
+            }`}
         >
           <span className="w-5 h-5 rounded-full bg-current/20 flex items-center justify-center text-xs">
             1
@@ -657,11 +691,10 @@ export default function CreateQuizPage() {
         </div>
         <div className="h-px w-8 bg-border" />
         <div
-          className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
-            step === "review"
-              ? "bg-primary text-primary-foreground"
-              : "bg-muted text-muted-foreground"
-          }`}
+          className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${step === "review"
+            ? "bg-primary text-primary-foreground"
+            : "bg-muted text-muted-foreground"
+            }`}
         >
           <span className="w-5 h-5 rounded-full bg-current/20 flex items-center justify-center text-xs">
             2
@@ -688,7 +721,7 @@ export default function CreateQuizPage() {
               )}
             </CardTitle>
             <CardDescription>
-              {mode === "ai" 
+              {mode === "ai"
                 ? "Fill in the quiz details and let AI generate questions for you"
                 : "Fill in the quiz details and then add questions manually"
               }
@@ -725,26 +758,17 @@ export default function CreateQuizPage() {
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-2">
-                  <Label>Topic</Label>
-                  <Select
-                    value={selectedTopic}
-                    onValueChange={(value) => setValue("topic", value)}
-                  >
-                    <SelectTrigger className="h-11">
-                      <SelectValue placeholder="Select a DSA topic" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {DSA_TOPICS.map((topic) => (
-                        <SelectItem key={topic} value={topic}>
-                          {topic}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  {errors.topic && (
+                  <Label>Topics</Label>
+                  <TopicSelector
+                    value={selectedTopics}
+                    onChange={(topics) => setValue("topics", topics)}
+                    suggestions={DSA_TOPICS}
+                    placeholder="Type or select topics..."
+                  />
+                  {errors.topics && (
                     <p className="text-sm text-destructive flex items-center gap-1">
                       <AlertCircle className="h-3 w-3" />
-                      {errors.topic.message}
+                      {errors.topics.message}
                     </p>
                   )}
                 </div>
@@ -757,11 +781,10 @@ export default function CreateQuizPage() {
                         key={level}
                         type="button"
                         onClick={() => setValue("difficulty", level)}
-                        className={`flex-1 py-2.5 px-4 rounded-lg border-2 text-sm font-medium capitalize transition-all cursor-pointer ${
-                          selectedDifficulty === level
-                            ? getDifficultyColor(level) + " border-current"
-                            : "border-border/50 hover:border-primary/30"
-                        }`}
+                        className={`flex-1 py-2.5 px-4 rounded-lg border-2 text-sm font-medium capitalize transition-all cursor-pointer ${selectedDifficulty === level
+                          ? getDifficultyColor(level) + " border-current"
+                          : "border-border/50 hover:border-primary/30"
+                          }`}
                       >
                         {level}
                       </button>
@@ -789,7 +812,7 @@ export default function CreateQuizPage() {
                   }}
                 />
                 <p className="text-xs text-muted-foreground">
-                  Total time for the entire quiz (default: 15 minutes)
+                  Total time for the entire quiz (default: 15 minutes) (Use up & down buttons to change the time)
                 </p>
               </div>
 
@@ -871,8 +894,14 @@ export default function CreateQuizPage() {
                     </div>
                     <div className="h-8 w-px bg-border" />
                     <div>
-                      <p className="text-sm text-muted-foreground">Topic</p>
-                      <p className="font-semibold">{quizData.topic}</p>
+                      <p className="text-sm text-muted-foreground">Topics</p>
+                      <div className="flex flex-wrap gap-1">
+                        {quizData.topics.map((topic, idx) => (
+                          <Badge key={idx} variant="secondary" className="text-xs">
+                            {topic}
+                          </Badge>
+                        ))}
+                      </div>
                     </div>
                     <div className="h-8 w-px bg-border" />
                     <div>
@@ -890,7 +919,7 @@ export default function CreateQuizPage() {
                       <p className="font-semibold">{questions.length}</p>
                     </div>
                   </div>
-                  
+
                   {/* Smart Actions */}
                   <div className="flex flex-wrap gap-2">
                     <Button
@@ -993,11 +1022,10 @@ export default function CreateQuizPage() {
                       {question.options.map((option) => (
                         <div
                           key={option.id}
-                          className={`flex items-center gap-3 p-3 rounded-lg border transition-colors ${
-                            option.isCorrect
-                              ? "border-green-500/50 bg-green-500/5"
-                              : "border-border/50"
-                          }`}
+                          className={`flex items-center gap-3 p-3 rounded-lg border transition-colors ${option.isCorrect
+                            ? "border-green-500/50 bg-green-500/5"
+                            : "border-border/50"
+                            }`}
                         >
                           <RadioGroupItem
                             value={option.id}

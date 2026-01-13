@@ -5,7 +5,7 @@ import { QueryProvider } from "./query-provider";
 import { ThemeProvider } from "./theme-provider";
 import { SupabaseProvider } from "./supabase-provider";
 import { UserProvider } from "./user-provider";
-import { Toaster } from "sonner";
+import { Toaster } from "react-hot-toast";
 
 export function Providers({ children }: { children: ReactNode }) {
   return (
@@ -19,7 +19,33 @@ export function Providers({ children }: { children: ReactNode }) {
         <SupabaseProvider>
           <UserProvider>
             {children}
-            <Toaster richColors position="top-right" />
+            <Toaster 
+              position="top-right"
+              toastOptions={{
+                style: {
+                  background: 'white',
+                  color: '#0f0f0f',
+                },
+                success: {
+                  style: {
+                    background: 'white',
+                    color: '#0f0f0f',
+                  },
+                },
+                error: {
+                  style: {
+                    background: 'white',
+                    color: '#0f0f0f',
+                  },
+                },
+                loading: {
+                  style: {
+                    background: 'white',
+                    color: '#0f0f0f',
+                  },
+                },
+              }}
+            />
           </UserProvider>
         </SupabaseProvider>
       </ThemeProvider>

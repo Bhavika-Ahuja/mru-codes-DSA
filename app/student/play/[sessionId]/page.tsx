@@ -16,7 +16,7 @@ import {
   List,
   LogOut,
 } from "lucide-react";
-import { toast } from "sonner";
+import toast from "react-hot-toast";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -392,6 +392,14 @@ export default function StudentPlayPage() {
 
 
   // Move to next question
+  // Handle quiz submission
+  const handleSubmitQuiz = () => {
+    toast.success("Quiz submitted successfully!", { duration: 3000 });
+    setTimeout(() => {
+      router.push("/student/dashboard");
+    }, 500);
+  };
+
   const moveToNextQuestion = async () => {
     if (!session) return;
 
@@ -581,8 +589,12 @@ export default function StudentPlayPage() {
               <p className="text-4xl font-bold text-primary">{totalScore}</p>
               <p className="text-sm text-muted-foreground">Total Points</p>
             </div>
-            <Button onClick={() => router.push("/student/dashboard")}>
-              Back to Dashboard
+            <Button
+              onClick={handleSubmitQuiz}
+              size="lg"
+              className="w-full"
+            >
+              Submit Quiz
             </Button>
           </CardContent>
         </Card>
@@ -1012,10 +1024,10 @@ export default function StudentPlayPage() {
                     <Button
                       size="lg"
                       className="flex-1 cursor-pointer bg-primary hover:bg-primary/90 text-primary-foreground"
-                      onClick={() => router.push("/student/dashboard")}
+                      onClick={handleSubmitQuiz}
                     >
                       <PartyPopper className="h-4 w-4 mr-2" />
-                      Test Completed and Submitted
+                      Submit Quiz
                     </Button>
                   </div>
                 </div>
@@ -1095,11 +1107,11 @@ export default function StudentPlayPage() {
                 className="w-full"
                 onClick={() => {
                   setShowAllQuestions(false);
-                  router.push("/student/dashboard");
+                  handleSubmitQuiz();
                 }}
               >
                 <LogOut className="h-4 w-4 mr-2" />
-                Test Completed and Submitted
+                Submit Quiz
               </Button>
             </div>
           </Card>

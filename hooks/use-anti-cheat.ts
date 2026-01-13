@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from "react";
-import { toast } from "sonner";
+import toast from "react-hot-toast";
 import screenfull from "screenfull";
 
 interface AntiCheatConfig {
@@ -108,14 +108,28 @@ export function useAntiCheat(config: AntiCheatConfig) {
             );
           } else if (newCount < maxViolations - 5) {
             // Early warnings - less aggressive
-            toast.warning(
+            toast(
               `Notice: ${getViolationMessage(type)}. ${maxViolations - newCount} warnings remaining.`,
-              { duration: 3000 }
+              { 
+                duration: 3000,
+                icon: '⚠️',
+                style: {
+                  background: 'white',
+                  color: '#0f0f0f',
+                }
+              }
             );
           } else if (newCount < maxViolations - 2) {
-            toast.warning(
+            toast(
               `Warning: ${getViolationMessage(type)}. You have ${maxViolations - newCount} warnings remaining.`,
-              { duration: 4000 }
+              { 
+                duration: 4000,
+                icon: '⚠️',
+                style: {
+                  background: 'white',
+                  color: '#0f0f0f',
+                }
+              }
             );
           } else if (newCount < maxViolations) {
             toast.error(
