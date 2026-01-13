@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { GraduationCap, LogOut, Settings, User } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -30,20 +29,42 @@ interface Profile {
 }
 
 export function DashboardHeader({ profile }: { profile: Profile }) {
-  const router = useRouter();
   const supabase = createClient();
 
   const handleSignOut = async () => {
-    const { error } = await supabase.auth.signOut();
+    try {
+      if (typeof window !== "undefined") {
+        const keysToRemove: string[] = [];
+        for (let i = 0; i < localStorage.length; i++) {
+          const key = localStorage.key(i);
+          if (key && (key.startsWith("sb-") || key.includes("supabase"))) {
+            keysToRemove.push(key);
+          }
+        }
+        keysToRemove.forEach((key) => localStorage.removeItem(key));
+        localStorage.removeItem("sb-auth-token");
+        sessionStorage.clear();
+      }
 
-    if (error) {
-      toast.error(error.message);
-      return;
+      const { error } = await supabase.auth.signOut();
+
+      if (error) {
+        toast.error(error.message);
+        return;
+      }
+
+      if (typeof window !== "undefined") {
+        localStorage.clear();
+        setTimeout(() => {
+          window.location.href = "/";
+        }, 100);
+      }
+
+      toast.success("Signed out successfully");
+    } catch (error) {
+      console.error("Error during sign out:", error);
+      toast.error("Error signing out. Please try again.");
     }
-
-    toast.success("Signed out successfully");
-    router.push("/login");
-    router.refresh();
   };
 
   const initials = profile.full_name
@@ -56,13 +77,11 @@ export function DashboardHeader({ profile }: { profile: Profile }) {
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur">
       <div className="flex h-14 items-center justify-between px-4 lg:px-6">
-        {/* Logo */}
         <Link href="/dashboard" className="flex items-center gap-2 font-semibold">
           <GraduationCap className="h-5 w-5 text-primary" />
           <span className="hidden sm:inline">DSA Platform</span>
         </Link>
 
-        {/* Right side */}
         <div className="flex items-center gap-2">
           <ThemeToggle />
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
@@ -30,9 +30,31 @@ type LoginFormData = z.infer<typeof loginSchema>;
 
 export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
+  const [isCheckingAuth, setIsCheckingAuth] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
   const router = useRouter();
   const supabase = createClient();
+
+  useEffect(() => {
+    const checkAuth = async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          type UserMetadata = { role?: "student" | "teacher" } | null;
+          const metadata = user.user_metadata as UserMetadata;
+          const role = metadata?.role === "teacher" ? "teacher" : "student";
+          const dashboardPath = role === "teacher" ? "/teacher/dashboard" : "/student/dashboard";
+          router.replace(dashboardPath);
+        }
+      } catch (error) {
+        console.error("Error checking auth:", error);
+      } finally {
+        setIsCheckingAuth(false);
+      }
+    };
+
+    checkAuth();
+  }, [router, supabase]);
 
   const {
     register,
@@ -46,7 +68,6 @@ export default function LoginPage() {
     setIsLoading(true);
 
     try {
-      // Sign in with persistent session (30 days)
       const { data: authData, error } = await supabase.auth.signInWithPassword({
         email: data.email,
         password: data.password,
@@ -54,41 +75,45 @@ export default function LoginPage() {
 
       if (error) {
         toast.error(error.message);
+        setIsLoading(false);
         return;
       }
 
-      // Set session persistence - refresh token will be stored in cookies
-      if (authData.session) {
-        // The session is automatically persisted via cookies by Supabase SSR
-        // The middleware will handle setting proper cookie expiration
+      if (!authData.user) {
+        toast.error("Failed to sign in. Please try again.");
+        setIsLoading(false);
+        return;
       }
 
-      // Get user profile to determine redirect
-      const { data: userData } = await supabase.auth.getUser();
-      if (userData.user) {
-        const response = await fetch(`/api/profile/me`);
-        if (response.ok) {
-          const { profile } = await response.json();
-          toast.success("Welcome back! You'll stay logged in for 30 days.");
+      toast.success("Welcome back!");
 
-          // Redirect based on role
-          if (profile?.role === "teacher") {
-            router.push("/teacher/dashboard");
-          } else {
-            router.push("/student/dashboard");
-          }
-          router.refresh();
-        } else {
-          router.push("/dashboard");
-          router.refresh();
-        }
+      type UserMetadata = { role?: "student" | "teacher" } | null;
+      const metadata = authData.user.user_metadata as UserMetadata;
+      const role = metadata?.role === "teacher" ? "teacher" : "student";
+      const dashboardPath = role === "teacher" ? "/teacher/dashboard" : "/student/dashboard";
+
+      if (typeof window !== "undefined") {
+        window.location.href = dashboardPath;
+      } else {
+        router.push(dashboardPath);
+        router.refresh();
       }
     } catch {
-      toast.error("An unexpected error occurred");
-    } finally {
+      toast.error("An unexpected error occurred. Please try again.");
       setIsLoading(false);
     }
   };
+
+  if (isCheckingAuth) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="flex flex-col items-center gap-4">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          <p className="text-sm text-muted-foreground">Checking authentication...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen relative overflow-hidden bg-background">

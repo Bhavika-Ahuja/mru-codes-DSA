@@ -14,7 +14,6 @@ export function useAuth() {
   const signUp = async (data: SignupFormData) => {
     const { email, password, full_name, roll_number, section, role } = data;
 
-    // Sign up with Supabase Auth
     const { data: authData, error: authError } = await supabase.auth.signUp({
       email,
       password,
@@ -29,7 +28,12 @@ export function useAuth() {
     });
 
     if (authError) {
-      toast.error(authError.message);
+      const code = (authError as { code?: string }).code;
+      if (code === "user_already_exists") {
+        toast.error("An account with this email already exists. Please sign in instead.");
+      } else {
+        toast.error(authError.message);
+      }
       return { error: authError };
     }
 
@@ -54,44 +58,66 @@ export function useAuth() {
       return { error };
     }
 
-    // Refresh profile to get role
     await refreshProfile();
-    
     toast.success("Welcome back!");
-    
-    // Redirect based on role
+
     if (authData.user) {
       const response = await fetch(`/api/profile/me`);
       if (response.ok) {
         const { profile: userProfile } = await response.json();
-        if (userProfile?.role === "teacher") {
-          router.push("/teacher/dashboard");
-        } else {
-          router.push("/student/dashboard");
-        }
+        const dashboardPath =
+          userProfile?.role === "teacher"
+            ? "/teacher/dashboard"
+            : "/student/dashboard";
+        router.push(dashboardPath);
       } else {
         router.push("/dashboard");
       }
     }
-    
-    router.refresh();
 
+    router.refresh();
     return { data: authData };
   };
 
   const signOut = async () => {
-    const { error } = await supabase.auth.signOut();
+    try {
+      if (typeof window !== "undefined") {
+        const keysToRemove: string[] = [];
+        for (let i = 0; i < localStorage.length; i++) {
+          const key = localStorage.key(i);
+          if (key && (key.startsWith("sb-") || key.includes("supabase"))) {
+            keysToRemove.push(key);
+          }
+        }
+        keysToRemove.forEach((key) => localStorage.removeItem(key));
+        localStorage.removeItem("sb-auth-token");
+        sessionStorage.clear();
+      }
 
-    if (error) {
-      toast.error(error.message);
-      return { error };
+      const { error } = await supabase.auth.signOut();
+
+      if (error) {
+        toast.error(error.message);
+        return { error };
+      }
+
+      if (typeof window !== "undefined") {
+        localStorage.clear();
+        setTimeout(() => {
+          window.location.href = "/";
+        }, 100);
+      } else {
+        router.push("/");
+        router.refresh();
+      }
+
+      toast.success("Signed out successfully");
+      return { error: null };
+    } catch (error) {
+      console.error("Error during sign out:", error);
+      toast.error("Error signing out. Please try again.");
+      return { error: error as Error };
     }
-
-    toast.success("Signed out successfully");
-    router.push("/login");
-    router.refresh();
-
-    return { error: null };
   };
 
   const forgotPassword = async (email: string) => {

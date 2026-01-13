@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
@@ -45,10 +45,38 @@ type SignupFormData = z.infer<typeof signupSchema>;
 
 export default function SignupPage() {
   const [isLoading, setIsLoading] = useState(false);
+  const [isCheckingAuth, setIsCheckingAuth] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const router = useRouter();
   const supabase = createClient();
+
+  useEffect(() => {
+    const checkAuth = async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          const response = await fetch(`/api/profile/me`);
+          if (response.ok) {
+            const { profile } = await response.json();
+            const dashboardPath =
+              profile?.role === "teacher"
+                ? "/teacher/dashboard"
+                : "/student/dashboard";
+            router.replace(dashboardPath);
+          } else {
+            router.replace("/dashboard");
+          }
+        }
+      } catch (error) {
+        console.error("Error checking auth:", error);
+      } finally {
+        setIsCheckingAuth(false);
+      }
+    };
+
+    checkAuth();
+  }, [router, supabase]);
 
   const {
     register,
@@ -69,7 +97,6 @@ export default function SignupPage() {
     setIsLoading(true);
 
     try {
-      // Sign up with Supabase Auth
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: data.email,
         password: data.password,
@@ -84,7 +111,12 @@ export default function SignupPage() {
       });
 
       if (authError) {
-        toast.error(authError.message);
+        const code = (authError as { code?: string }).code;
+        if (code === "user_already_exists") {
+          toast.error("An account with this email already exists. Please sign in instead.");
+        } else {
+          toast.error(authError.message);
+        }
         return;
       }
 
@@ -98,6 +130,18 @@ export default function SignupPage() {
       setIsLoading(false);
     }
   };
+
+  // Show loading state while checking auth
+  if (isCheckingAuth) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="flex flex-col items-center gap-4">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          <p className="text-sm text-muted-foreground">Checking authentication...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen relative overflow-hidden bg-background">

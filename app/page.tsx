@@ -145,7 +145,7 @@ export default function HomePage() {
                 </span>
               </h1>
 
-              <p className="text-lg sm:text-xl text-muted-foreground mb-10 max-w-2xl mx-auto leading-relaxed animate-fade-in">
+              <p className="text-md sm:text-lg text-muted-foreground mb-10 max-w-2xl mx-auto leading-relaxed animate-fade-in">
                 A comprehensive learning platform designed for MRU students to excel in DSA through
                 interactive quizzes, structured assignments, and real-time performance tracking.
               </p>
@@ -159,7 +159,7 @@ export default function HomePage() {
                   </Button>
                 </Link>
                 <p className="text-sm text-muted-foreground">
-                  Already have an account? Sign in to access your dashboard
+                  Get started your DSA journey with us
                 </p>
               </div>
 

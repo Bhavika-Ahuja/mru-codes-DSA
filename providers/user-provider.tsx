@@ -58,14 +58,19 @@ export function UserProvider({ children }: UserProviderProps) {
 
   const fetchProfile = useCallback(async () => {
     try {
-      const response = await fetch(`/api/profile/me`);
+      const response = await fetch(`/api/profile/me`, {
+        credentials: "include",
+      });
       if (response.ok) {
         const data = await response.json();
         setProfile(data.profile);
         return data.profile;
       }
+      if (response.status === 401) {
+        setProfile(null);
+      }
     } catch (error) {
-      console.error("Error fetching profile:", error);
+      setProfile(null);
     }
     return null;
   }, []);
@@ -77,7 +82,6 @@ export function UserProvider({ children }: UserProviderProps) {
   }, [user?.id, fetchProfile]);
 
   useEffect(() => {
-    // Get initial session
     const getInitialSession = async () => {
       try {
         const {
@@ -98,7 +102,6 @@ export function UserProvider({ children }: UserProviderProps) {
 
     getInitialSession();
 
-    // Listen for auth changes
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, session) => {
@@ -106,6 +109,10 @@ export function UserProvider({ children }: UserProviderProps) {
       setUser(currentUser);
 
       if (currentUser) {
+        if (event === "SIGNED_IN") {
+          setIsLoading(false);
+          return;
+        }
         await fetchProfile();
       } else {
         setProfile(null);
