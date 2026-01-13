@@ -69,7 +69,7 @@ export function UserProvider({ children }: UserProviderProps) {
       if (response.status === 401) {
         setProfile(null);
       }
-    } catch (error) {
+    } catch {
       setProfile(null);
     }
     return null;

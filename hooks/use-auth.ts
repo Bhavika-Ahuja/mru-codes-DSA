@@ -58,21 +58,36 @@ export function useAuth() {
       return { error };
     }
 
+    if (!authData.user) {
+      toast.error("Failed to sign in. Please try again.");
+      return { error: new Error("No user returned from sign in") };
+    }
+
+    const isVerified = Boolean(
+      (authData.user as { email_confirmed_at?: string | null; confirmed_at?: string | null })
+        .email_confirmed_at ||
+        (authData.user as { confirmed_at?: string | null }).confirmed_at
+    );
+
+    if (!isVerified) {
+      toast.error("Please verify your email address from the link we sent before signing in.");
+      await supabase.auth.signOut();
+      return { error: new Error("Email not verified") };
+    }
+
     await refreshProfile();
     toast.success("Welcome back!");
 
-    if (authData.user) {
-      const response = await fetch(`/api/profile/me`);
-      if (response.ok) {
-        const { profile: userProfile } = await response.json();
-        const dashboardPath =
-          userProfile?.role === "teacher"
-            ? "/teacher/dashboard"
-            : "/student/dashboard";
-        router.push(dashboardPath);
-      } else {
-        router.push("/dashboard");
-      }
+    const response = await fetch(`/api/profile/me`);
+    if (response.ok) {
+      const { profile: userProfile } = await response.json();
+      const dashboardPath =
+        userProfile?.role === "teacher"
+          ? "/teacher/dashboard"
+          : "/student_dashboard";
+      router.push(dashboardPath);
+    } else {
+      router.push("/dashboard");
     }
 
     router.refresh();

@@ -85,6 +85,20 @@ export default function LoginPage() {
         return;
       }
 
+      // Require verified email before allowing access
+      const isVerified = Boolean(
+        (authData.user as { email_confirmed_at?: string | null; confirmed_at?: string | null })
+          .email_confirmed_at ||
+        (authData.user as { confirmed_at?: string | null }).confirmed_at
+      );
+
+      if (!isVerified) {
+        toast.error("Please verify your email address from the link we sent before signing in.");
+        await supabase.auth.signOut();
+        setIsLoading(false);
+        return;
+      }
+
       toast.success("Welcome back!");
 
       type UserMetadata = { role?: "student" | "teacher" } | null;
