@@ -1,6 +1,6 @@
 import Link from "next/link";
+import Image from "next/image";
 import {
-  GraduationCap,
   BookOpen,
   Trophy,
   Zap,
@@ -102,7 +102,14 @@ export default function HomePage() {
           <Link href="/" className="flex items-center gap-3 group">
             <div className="relative">
               <div className="absolute inset-0 bg-primary/20 blur-xl rounded-full group-hover:bg-primary/30 transition-colors" />
-              <GraduationCap className="h-7 w-7 text-primary relative z-10 group-hover:scale-110 transition-transform" />
+              <Image
+                src="/mru.jpeg"
+                alt="Manav Rachna University"
+                width={32}
+                height={32}
+                className="relative z-10 h-8 w-8 rounded-full object-cover ring-1 ring-border/50 group-hover:scale-110 transition-transform"
+                priority
+              />
             </div>
             <div className="flex flex-col">
               <span className="font-bold text-lg leading-tight">DSA Learning Platform</span>
@@ -133,8 +140,8 @@ export default function HomePage() {
             <div className="text-center max-w-4xl mx-auto">
               {/* Badge */}
               <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 border border-primary/20 mb-8 animate-fade-in">
-                <Sparkles className="h-4 w-4 text-primary" />
-                <span className="text-sm font-medium text-primary">Manav Rachna University</span>
+
+                <span className="text-sm font-medium text-primary">Initiative by Manav Rachna University for its students</span>
               </div>
 
               {/* Main Heading */}
@@ -276,7 +283,13 @@ export default function HomePage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
             <div className="flex items-center gap-3">
-              <GraduationCap className="h-5 w-5 text-primary" />
+              <Image
+                src="/mru.jpeg"
+                alt="Manav Rachna University"
+                width={24}
+                height={24}
+                className="h-6 w-6 rounded-full object-cover ring-1 ring-border/50"
+              />
               <div>
                 <div className="font-semibold">DSA Learning Platform</div>
                 <div className="text-sm text-muted-foreground">Manav Rachna University</div>

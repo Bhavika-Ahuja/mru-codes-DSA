@@ -25,6 +25,11 @@ export const metadata: Metadata = {
     "Quiz",
     "Education",
   ],
+  icons: {
+    icon: "/mru.jpeg",
+    shortcut: "/mru.jpeg",
+    apple: "/mru.jpeg",
+  },
 };
 
 export default function RootLayout({

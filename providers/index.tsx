@@ -12,14 +12,14 @@ export function Providers({ children }: { children: ReactNode }) {
     <QueryProvider>
       <ThemeProvider
         attribute="class"
-        defaultTheme="system"
+        defaultTheme="dark"
         enableSystem
         disableTransitionOnChange
       >
         <SupabaseProvider>
           <UserProvider>
             {children}
-            <Toaster 
+            <Toaster
               position="top-right"
               toastOptions={{
                 style: {

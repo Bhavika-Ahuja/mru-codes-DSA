@@ -30,8 +30,15 @@ import toast from "react-hot-toast";
 import type { Department } from "@/lib/departments";
 import { DEPARTMENT_OPTIONS, SECTION_OPTIONS, departmentRequiresSection } from "@/lib/departments";
 
+const COLLEGE_EMAIL_DOMAIN = "@mru.edu.in";
+
 const signupSchema = z.object({
-  email: z.string().email("Please enter a valid email"),
+  email: z
+    .string()
+    .email("Please enter a valid email")
+    .refine((email) => email.toLowerCase().endsWith(COLLEGE_EMAIL_DOMAIN), {
+      message: `You can only make account with college id (${COLLEGE_EMAIL_DOMAIN})`,
+    }),
   password: z.string().min(6, "Password must be at least 6 characters"),
   confirmPassword: z.string().min(6, "Please confirm your password"),
   fullName: z.string().min(2, "Name must be at least 2 characters"),
@@ -95,9 +102,10 @@ export default function SignupPage() {
     handleSubmit,
     setValue,
     watch,
-    formState: { errors },
+    formState: { errors, isValid },
   } = useForm<SignupFormData>({
     resolver: zodResolver(signupSchema),
+    mode: "onChange",
     defaultValues: {
       role: "student",
       department: "",
@@ -261,6 +269,9 @@ export default function SignupPage() {
                     {...register("email")}
                     disabled={isLoading}
                   />
+                  <p className="text-xs text-muted-foreground">
+                    You can only make account with college id ({COLLEGE_EMAIL_DOMAIN})
+                  </p>
                   {errors.email && (
                     <p className="text-sm text-destructive">{errors.email.message}</p>
                   )}
@@ -400,7 +411,7 @@ export default function SignupPage() {
                 <Button
                   type="submit"
                   className="w-full h-11 font-medium group"
-                  disabled={isLoading}
+                  disabled={isLoading || !isValid}
                 >
                   {isLoading ? (
                     <>
