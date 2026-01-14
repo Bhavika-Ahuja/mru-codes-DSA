@@ -135,32 +135,40 @@ export default function HomePage() {
           {/* Animated Background */}
           <div className="absolute inset-0 bg-linear-to-br from-primary/10 via-background to-primary/5" />
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(124,58,237,0.1),transparent_50%)]" />
+          <div className="pointer-events-none absolute inset-0 opacity-[0.06] bg-[radial-gradient(circle_at_1px_1px,rgba(255,255,255,0.35)_1px,transparent_0)] background-size:[28px_28px] dark:opacity-[0.03]" />
 
           <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 pb-16 sm:pt-28 sm:pb-24">
             <div className="text-center max-w-4xl mx-auto">
               {/* Badge */}
-              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 border border-primary/20 mb-8 animate-fade-in">
-
-                <span className="text-sm font-medium text-primary">Initiative by Manav Rachna University for its students</span>
+              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-card/50 backdrop-blur-md border border-border/60 shadow-sm mb-8 animate-fade-in">
+                <Sparkles className="h-4 w-4 text-primary" />
+                <span className="text-sm font-medium text-primary/90">
+                  Initiative by Manav Rachna University for its students
+                </span>
               </div>
 
               {/* Main Heading */}
-              <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight mb-6 animate-fade-in">
+              <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight leading-[1.05] sm:leading-[1.05] mb-6 animate-fade-in text-balance">
                 Master Data Structures &{" "}
                 <span className="bg-linear-to-r from-primary to-primary/60 bg-clip-text text-transparent">
                   Algorithms
                 </span>
               </h1>
 
-              <p className="text-md sm:text-lg text-muted-foreground mb-10 max-w-2xl mx-auto leading-relaxed animate-fade-in">
+              <p className="text-base sm:text-lg text-muted-foreground/90 mb-10 max-w-2xl mx-auto leading-relaxed animate-fade-in text-pretty">
                 A comprehensive learning platform designed for MRU students to excel in DSA through
                 interactive quizzes, structured assignments, and real-time performance tracking.
               </p>
 
+
+
               {/* CTA Buttons */}
               <div className="flex flex-col items-center justify-center gap-4 mb-16 animate-fade-in">
                 <Link href="/login">
-                  <Button size="lg" className="group cursor-pointer text-base px-8 py-6">
+                  <Button
+                    size="lg"
+                    className="group cursor-pointer text-base px-8 py-6 shadow-lg shadow-primary/20 hover:shadow-primary/30 transition-all hover:-translate-y-0.5"
+                  >
                     Continue to Platform
                     <ArrowRight className="ml-2 h-5 w-5 group-hover:translate-x-1 transition-transform" />
                   </Button>
@@ -168,6 +176,118 @@ export default function HomePage() {
                 <p className="text-sm text-muted-foreground">
                   Get started your DSA journey with us
                 </p>
+              </div>
+
+              {/* Preview Card (below main text) */}
+              <div className="mb-10 animate-fade-in">
+                <div className="mx-auto max-w-4xl">
+                  <div className="relative">
+                    <div className="absolute -inset-6 rounded-3xl bg-primary/10 blur-2xl" />
+                    <div className="relative rounded-3xl border bg-card/60 backdrop-blur-sm shadow-2xl shadow-primary/10 overflow-hidden">
+                      <div className="p-5 sm:p-6 border-b bg-muted/20">
+                        <div className="flex items-center justify-between gap-4">
+                          <div className="flex items-center gap-3 min-w-0">
+                            <Image
+                              src="/mru.jpeg"
+                              alt="Manav Rachna University"
+                              width={40}
+                              height={40}
+                              className="h-10 w-10 rounded-full object-cover ring-1 ring-border/50 shrink-0"
+                              priority
+                            />
+                            <div className="min-w-0 text-left">
+                              <div className="font-semibold truncate">Your Learning Snapshot</div>
+                              <div className="text-xs text-muted-foreground truncate">
+                                Live quizzes • assignments • analytics
+                              </div>
+                            </div>
+                          </div>
+                          <div className="hidden sm:flex items-center gap-2 text-xs text-muted-foreground shrink-0">
+                            <span className="inline-flex h-2 w-2 rounded-full bg-green-500" />
+                            Real-time
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="p-5 sm:p-6 grid gap-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                          <div className="rounded-2xl border bg-background/40 p-4 text-left">
+                            <div className="text-xs text-muted-foreground">Streak</div>
+                            <div className="mt-1 text-2xl font-bold">7</div>
+                            <div className="text-xs text-muted-foreground">days</div>
+                          </div>
+                          <div className="rounded-2xl border bg-background/40 p-4 text-left">
+                            <div className="text-xs text-muted-foreground">Quiz Score</div>
+                            <div className="mt-1 text-2xl font-bold">82%</div>
+                            <div className="text-xs text-muted-foreground">avg</div>
+                          </div>
+                          <div className="rounded-2xl border bg-background/40 p-4 text-left">
+                            <div className="text-xs text-muted-foreground">Rank</div>
+                            <div className="mt-1 text-2xl font-bold">#14</div>
+                            <div className="text-xs text-muted-foreground">section</div>
+                          </div>
+                        </div>
+
+                        <div className="rounded-2xl border bg-background/40 p-4 text-left">
+                          <div className="flex items-center justify-between gap-4">
+                            <div className="font-semibold">This week</div>
+                            <div className="text-xs text-muted-foreground">Progress</div>
+                          </div>
+                          <div className="mt-3 grid gap-3">
+                            <div>
+                              <div className="flex items-center justify-between text-xs text-muted-foreground">
+                                <span>Arrays &amp; Strings</span>
+                                <span>78%</span>
+                              </div>
+                              <div className="mt-1 h-2 rounded-full bg-muted/50 overflow-hidden">
+                                <div className="h-full w-[78%] rounded-full bg-primary" />
+                              </div>
+                            </div>
+                            <div>
+                              <div className="flex items-center justify-between text-xs text-muted-foreground">
+                                <span>Recursion</span>
+                                <span>55%</span>
+                              </div>
+                              <div className="mt-1 h-2 rounded-full bg-muted/50 overflow-hidden">
+                                <div className="h-full w-[55%] rounded-full bg-primary/80" />
+                              </div>
+                            </div>
+                            <div>
+                              <div className="flex items-center justify-between text-xs text-muted-foreground">
+                                <span>Trees</span>
+                                <span>32%</span>
+                              </div>
+                              <div className="mt-1 h-2 rounded-full bg-muted/50 overflow-hidden">
+                                <div className="h-full w-[32%] rounded-full bg-primary/60" />
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="grid sm:grid-cols-2 gap-3 text-left">
+                          <div className="rounded-2xl border bg-background/40 p-4">
+                            <div className="flex items-center gap-2">
+                              <Zap className="h-4 w-4 text-primary" />
+                              <div className="font-semibold">Live Quiz</div>
+                            </div>
+                            <div className="mt-2 text-xs text-muted-foreground">
+                              Join teacher-hosted quizzes with instant feedback.
+                            </div>
+                          </div>
+                          <div className="rounded-2xl border bg-background/40 p-4">
+                            <div className="flex items-center gap-2">
+                              <Brain className="h-4 w-4 text-primary" />
+                              <div className="font-semibold">AI Practice</div>
+                            </div>
+                            <div className="mt-2 text-xs text-muted-foreground">
+                              Generate questions and practice smarter.
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </div>
 
               {/* Stats */}
