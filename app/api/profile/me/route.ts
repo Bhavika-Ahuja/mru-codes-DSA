@@ -37,6 +37,7 @@ export async function PATCH(request: Request) {
       data: {
         fullName: body.fullName,
         rollNumber: body.rollNumber ?? null,
+        department: body.department ?? null,
         section: body.section ?? null,
         avatarUrl: body.avatarUrl ?? null,
       },

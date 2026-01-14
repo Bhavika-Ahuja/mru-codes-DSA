@@ -23,35 +23,29 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import toast from "react-hot-toast";
+import type { Department } from "@/lib/departments";
+import { DEPARTMENT_OPTIONS, SECTION_OPTIONS, departmentRequiresSection } from "@/lib/departments";
 
 export default function ExportReportsPage() {
+  const [selectedDepartment, setSelectedDepartment] = useState<string>("all");
   const [selectedSection, setSelectedSection] = useState<string>("all");
   const [reportType, setReportType] = useState<string>("all");
   const [dateFrom, setDateFrom] = useState<string>("");
   const [dateTo, setDateTo] = useState<string>("");
   const [isExporting, setIsExporting] = useState(false);
-  const [sections, setSections] = useState<string[]>([]);
-
-  useEffect(() => {
-    // Fetch available sections
-    fetch("/api/analytics/teacher")
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.success && data.sections) {
-          setSections(data.sections);
-        }
-      })
-      .catch((error) => {
-        console.error("Error fetching sections:", error);
-      });
-  }, []);
 
   const handleExport = async () => {
     try {
       setIsExporting(true);
       const params = new URLSearchParams();
-      
-      if (selectedSection !== "all") {
+
+      if (selectedDepartment !== "all") {
+        params.append("department", selectedDepartment);
+      }
+      if (
+        selectedSection !== "all" &&
+        departmentRequiresSection(selectedDepartment as Department)
+      ) {
         params.append("section", selectedSection);
       }
       params.append("type", reportType);
@@ -76,9 +70,14 @@ export default function ExportReportsPage() {
       a.href = url;
       
       const timestamp = new Date().toISOString().split("T")[0];
-      const sectionPart = selectedSection !== "all" ? `-${selectedSection}` : "";
+      const deptPart = selectedDepartment !== "all" ? `-${selectedDepartment}` : "";
+      const sectionPart =
+        selectedSection !== "all" &&
+        departmentRequiresSection(selectedDepartment as Department)
+          ? `-Section${selectedSection}`
+          : "";
       const typePart = reportType !== "all" ? `-${reportType}` : "";
-      const filename = `Performance-Report${sectionPart}${typePart}-${timestamp}.xlsx`;
+      const filename = `Performance-Report${deptPart}${sectionPart}${typePart}-${timestamp}.xlsx`;
       a.download = filename;
       
       document.body.appendChild(a);
@@ -162,23 +161,51 @@ export default function ExportReportsPage() {
               </Select>
             </div>
 
-            {/* Section Filter */}
+            {/* Department Filter */}
             <div className="space-y-2">
-              <Label>Section/Class</Label>
-              <Select value={selectedSection} onValueChange={setSelectedSection}>
+              <Label>Department</Label>
+              <Select
+                value={selectedDepartment}
+                onValueChange={(value) => {
+                  setSelectedDepartment(value);
+                  if (!departmentRequiresSection(value as Department)) {
+                    setSelectedSection("all");
+                  }
+                }}
+              >
                 <SelectTrigger>
-                  <SelectValue placeholder="All Sections" />
+                  <SelectValue placeholder="All Departments" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All Sections</SelectItem>
-                  {sections.map((section) => (
-                    <SelectItem key={section} value={section}>
-                      {section}
+                  <SelectItem value="all">All Departments</SelectItem>
+                  {DEPARTMENT_OPTIONS.map((d) => (
+                    <SelectItem key={d.value} value={d.value}>
+                      {d.label}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
+
+            {/* Section Filter (CSE/AIML only) */}
+            {departmentRequiresSection(selectedDepartment as Department) && (
+              <div className="space-y-2">
+                <Label>Section</Label>
+                <Select value={selectedSection} onValueChange={setSelectedSection}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="All Sections" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Sections</SelectItem>
+                    {SECTION_OPTIONS.map((s) => (
+                      <SelectItem key={s} value={s}>
+                        Section {s}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
 
             {/* Date Range */}
             <div className="space-y-4">
@@ -232,7 +259,7 @@ export default function ExportReportsPage() {
           <CardHeader>
             <CardTitle>Report Contents</CardTitle>
             <CardDescription>
-              What's included in your export
+              What&apos;s included in your export
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">

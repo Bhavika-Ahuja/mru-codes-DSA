@@ -48,6 +48,7 @@ export async function GET(
                 id: true,
                 fullName: true,
                 avatarUrl: true,
+                department: true,
                 section: true,
               },
             },

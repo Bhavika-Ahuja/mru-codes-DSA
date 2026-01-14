@@ -17,6 +17,7 @@ export interface UserProfile {
   email: string;
   fullName: string;
   rollNumber: string | null;
+  department: string | null;
   section: string | null;
   role: "student" | "teacher";
   avatarUrl: string | null;

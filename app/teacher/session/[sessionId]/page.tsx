@@ -28,6 +28,7 @@ import { Progress } from "@/components/ui/progress";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { createClient } from "@/lib/supabase/client";
+import { formatDepartmentSection } from "@/lib/departments";
 
 interface Question {
   id: string;
@@ -380,8 +381,11 @@ export default function TeacherSessionPage() {
                     // Calculate section-wise counts
                     const sectionCounts = session.participants.reduce(
                       (acc, p) => {
-                        const section = p.student.section || "No Section";
-                        acc[section] = (acc[section] || 0) + 1;
+                        const label = formatDepartmentSection(
+                          (p.student as { department?: string | null }).department ?? null,
+                          p.student.section ?? null
+                        );
+                        acc[label] = (acc[label] || 0) + 1;
                         return acc;
                       },
                       {} as Record<string, number>
@@ -523,8 +527,11 @@ export default function TeacherSessionPage() {
                     // Calculate section-wise counts
                     const sectionCounts = session.participants.reduce(
                       (acc, p) => {
-                        const section = p.student.section || "No Section";
-                        acc[section] = (acc[section] || 0) + 1;
+                        const label = formatDepartmentSection(
+                          (p.student as { department?: string | null }).department ?? null,
+                          p.student.section ?? null
+                        );
+                        acc[label] = (acc[label] || 0) + 1;
                         return acc;
                       },
                       {} as Record<string, number>
@@ -598,8 +605,11 @@ export default function TeacherSessionPage() {
                   // Calculate section-wise counts for header
                   const sectionCounts = session.participants.reduce(
                     (acc, p) => {
-                      const section = p.student.section || "No Section";
-                      acc[section] = (acc[section] || 0) + 1;
+                      const label = formatDepartmentSection(
+                        (p.student as { department?: string | null }).department ?? null,
+                        p.student.section ?? null
+                      );
+                      acc[label] = (acc[label] || 0) + 1;
                       return acc;
                     },
                     {} as Record<string, number>
@@ -638,14 +648,17 @@ export default function TeacherSessionPage() {
                 ) : (
                   <div className="p-4 space-y-4">
                     {(() => {
-                      // Group participants by section
+                      // Group participants by department/section
                       const groupedBySection = session.participants.reduce(
                         (acc, p) => {
-                          const section = p.student.section || "No Section";
-                          if (!acc[section]) {
-                            acc[section] = [];
+                          const label = formatDepartmentSection(
+                            (p.student as { department?: string | null }).department ?? null,
+                            p.student.section ?? null
+                          );
+                          if (!acc[label]) {
+                            acc[label] = [];
                           }
-                          acc[section].push(p);
+                          acc[label].push(p);
                           return acc;
                         },
                         {} as Record<string, typeof session.participants>

@@ -29,6 +29,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import toast from "react-hot-toast";
 import { Loader2 } from "lucide-react";
+import { formatDepartmentSection } from "@/lib/departments";
 
 interface Submission {
   id: string;
@@ -240,10 +241,15 @@ export default function SubmissionsPage() {
                         {submission.student.rollNumber && (
                           <span>{submission.student.rollNumber}</span>
                         )}
-                        {submission.student.section && (
+                        {(submission.student.department || submission.student.section) && (
                           <>
                             <span>•</span>
-                            <span>{submission.student.section}</span>
+                            <span>
+                              {formatDepartmentSection(
+                                submission.student.department ?? null,
+                                submission.student.section ?? null
+                              )}
+                            </span>
                           </>
                         )}
                       </CardDescription>

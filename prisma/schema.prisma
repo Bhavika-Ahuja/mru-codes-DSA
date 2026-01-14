@@ -64,6 +64,8 @@ model Profile {
   email        String   @unique
   fullName     String   @map("full_name")
   rollNumber   String?  @map("roll_number")
+  /// Department / program (CSE, AIML, CSTI, FSD, GenAI)
+  department   String?  @map("department")
   section      String?
   role         UserRole @default(student)
   avatarUrl    String?  @map("avatar_url")
@@ -80,6 +82,7 @@ model Profile {
   assignmentsCreated    Assignment[]           @relation("AssignmentCreator")
   assignmentSubmissions AssignmentSubmission[]
 
+  @@index([department])
   @@index([section])
   @@index([role])
   @@index([totalScore(sort: Desc)])

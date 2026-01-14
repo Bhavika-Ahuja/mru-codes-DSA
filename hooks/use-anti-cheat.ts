@@ -208,8 +208,12 @@ export function useAntiCheat(config: AntiCheatConfig) {
     if (enableFullscreen && isActive && screenfull.isEnabled) {
       // Mark as requested if we're already in fullscreen
       if (screenfull.isFullscreen) {
-        setIsFullscreenRequested(true);
-        setIsFullscreen(true);
+        // Defer to avoid setState-in-effect lint (react-hooks/set-state-in-effect)
+        const t = window.setTimeout(() => {
+          setIsFullscreenRequested(true);
+          setIsFullscreen(true);
+        }, 0);
+        return () => window.clearTimeout(t);
       }
     }
   }, [enableFullscreen, isActive]);

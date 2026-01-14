@@ -5,10 +5,12 @@ import { BookOpen, Trophy, Zap, TrendingUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
+import { formatDepartmentSection } from "@/lib/departments";
 
 interface Profile {
   id: string;
   full_name: string;
+  department: string | null;
   section: string | null;
   total_points: number;
 }
@@ -63,6 +65,9 @@ export function StudentDashboard({ profile }: { profile: Profile }) {
           </CardHeader>
           <CardContent>
             <p className="text-2xl font-bold">--</p>
+            <p className="text-xs text-muted-foreground mt-1">
+              {formatDepartmentSection(profile.department, profile.section)}
+            </p>
           </CardContent>
         </Card>
       </div>

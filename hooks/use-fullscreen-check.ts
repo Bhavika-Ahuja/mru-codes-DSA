@@ -2,17 +2,19 @@ import { useEffect, useState } from "react";
 import screenfull from "screenfull";
 
 export function useFullscreenCheck() {
-  const [isFullscreen, setIsFullscreen] = useState(false);
-  const [isSupported, setIsSupported] = useState(false);
+  const getIsSupported = () =>
+    typeof window !== "undefined" && screenfull.isEnabled;
+
+  const getIsFullscreen = () =>
+    typeof window !== "undefined" && screenfull.isEnabled
+      ? screenfull.isFullscreen
+      : false;
+
+  const [isFullscreen, setIsFullscreen] = useState(getIsFullscreen);
+  const [isSupported] = useState(getIsSupported);
 
   useEffect(() => {
-    // Check if fullscreen is supported
-    setIsSupported(screenfull.isEnabled);
-
-    // Check initial state
-    if (screenfull.isEnabled) {
-      setIsFullscreen(screenfull.isFullscreen);
-    }
+    if (!screenfull.isEnabled) return;
 
     // Listen for fullscreen changes
     const handleChange = () => {
@@ -21,14 +23,10 @@ export function useFullscreenCheck() {
       }
     };
 
-    if (screenfull.isEnabled) {
-      screenfull.on("change", handleChange);
-    }
+    screenfull.on("change", handleChange);
 
     return () => {
-      if (screenfull.isEnabled) {
-        screenfull.off("change", handleChange);
-      }
+      screenfull.off("change", handleChange);
     };
   }, []);
 

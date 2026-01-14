@@ -75,8 +75,20 @@ export async function GET() {
       .sort((a, b) => a.accuracy - b.accuracy)
       .slice(0, 5);
 
+    type RecommendationPriority = "low" | "medium" | "high";
+    type Recommendation = {
+      type: string;
+      title: string;
+      description: string;
+      priority: RecommendationPriority;
+      actionUrl: string;
+      topic?: string;
+      currentScore?: number;
+      targetScore?: number;
+    };
+
     // Generate recommendations
-    const recommendations: any[] = [];
+    const recommendations: Recommendation[] = [];
 
     // Weak topic recommendations
     weakTopics.forEach((topic) => {

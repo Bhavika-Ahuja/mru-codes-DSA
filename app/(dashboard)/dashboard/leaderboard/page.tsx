@@ -10,13 +10,14 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
+import { formatDepartmentSection } from "@/lib/departments";
 
 async function getLeaderboard() {
   const supabase = await createClient();
 
   const { data: students, error } = await supabase
     .from("profiles")
-    .select("id, full_name, avatar_url, section, total_points")
+    .select("id, full_name, avatar_url, department, section, total_points")
     .eq("role", "student")
     .order("total_points", { ascending: false })
     .limit(50);
@@ -55,8 +56,14 @@ function getRankBadge(rank: number) {
 export default async function LeaderboardPage() {
   const leaderboard = await getLeaderboard();
 
-  // Group by section
-  const sections = [...new Set(leaderboard.map((s) => s.section).filter(Boolean))];
+  // Group by department + section (fallback to section)
+  const groups = [
+    ...new Set(
+      leaderboard
+        .map((s) => (s.department && s.section ? `${s.department}-${s.section}` : s.section))
+        .filter(Boolean)
+    ),
+  ];
 
   return (
     <div className="space-y-8">
@@ -116,7 +123,7 @@ export default async function LeaderboardPage() {
                       {student.full_name}
                     </h3>
                     <p className="text-sm text-muted-foreground">
-                      {student.section}
+                      {formatDepartmentSection(student.department ?? null, student.section ?? null)}
                     </p>
                     <div className="mt-3 flex items-center gap-1 text-2xl font-bold text-primary">
                       <TrendingUp className="h-5 w-5" />
@@ -161,7 +168,7 @@ export default async function LeaderboardPage() {
                     <div className="flex-1 min-w-0">
                       <p className="font-medium truncate">{student.full_name}</p>
                       <p className="text-sm text-muted-foreground">
-                        {student.section}
+                        {formatDepartmentSection(student.department ?? null, student.section ?? null)}
                       </p>
                     </div>
                     <div className="text-right">
@@ -186,21 +193,31 @@ export default async function LeaderboardPage() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              {sections.length === 0 ? (
+              {groups.length === 0 ? (
                 <p className="text-center text-muted-foreground py-8">
                   No section data available
                 </p>
               ) : (
                 <div className="space-y-8">
-                  {sections.map((section) => {
+                  {groups.map((groupKey) => {
+                    const parts = String(groupKey).split("-");
+                    const department = parts.length === 2 ? parts[0] : null;
+                    const section = parts.length === 2 ? parts[1] : parts[0];
+
                     const sectionStudents = leaderboard
-                      .filter((s) => s.section === section)
+                      .filter((s) =>
+                        department
+                          ? s.department === department && s.section === section
+                          : s.section === section
+                      )
                       .map((s, i) => ({ ...s, sectionRank: i + 1 }));
 
                     return (
-                      <div key={section}>
+                      <div key={String(groupKey)}>
                         <div className="flex items-center gap-2 mb-4">
-                          <Badge variant="outline">{section}</Badge>
+                          <Badge variant="outline">
+                            {department ? `${department} • ${section}` : section}
+                          </Badge>
                           <span className="text-sm text-muted-foreground">
                             {sectionStudents.length} students
                           </span>

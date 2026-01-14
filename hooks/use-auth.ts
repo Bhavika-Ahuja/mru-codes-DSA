@@ -12,7 +12,7 @@ export function useAuth() {
   const { user, profile, isLoading, isTeacher, isStudent, refreshProfile } = useUser();
 
   const signUp = async (data: SignupFormData) => {
-    const { email, password, full_name, roll_number, section, role } = data;
+    const { email, password, full_name, roll_number, department, section, role } = data;
 
     const { data: authData, error: authError } = await supabase.auth.signUp({
       email,
@@ -22,6 +22,7 @@ export function useAuth() {
         data: {
           full_name,
           roll_number,
+          department,
           section,
           role,
         },

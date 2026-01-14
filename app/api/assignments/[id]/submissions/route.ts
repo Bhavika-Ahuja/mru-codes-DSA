@@ -37,6 +37,7 @@ export async function GET(
             fullName: true,
             email: true,
             rollNumber: true,
+            department: true,
             section: true,
             avatarUrl: true,
           },

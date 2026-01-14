@@ -25,6 +25,7 @@ export async function getOrCreateProfileForSupabaseUser(user: User) {
   const email = user.email ?? "";
   const fullName = getNameFromMetadata(meta, user.email);
   const rollNumber = pickString(meta?.roll_number) || pickString(meta?.rollNumber);
+  const department = pickString(meta?.department);
   const section = pickString(meta?.section);
   const role = getRoleFromMetadata(meta);
 
@@ -35,6 +36,7 @@ export async function getOrCreateProfileForSupabaseUser(user: User) {
       email,
       fullName,
       rollNumber,
+      department,
       section,
       role,
     },
@@ -43,6 +45,7 @@ export async function getOrCreateProfileForSupabaseUser(user: User) {
       email,
       fullName,
       rollNumber,
+      department,
       section,
       role,
     },

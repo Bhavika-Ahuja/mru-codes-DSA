@@ -11,6 +11,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import prisma from "@/lib/prisma";
+import { formatDepartmentSection } from "@/lib/departments";
 
 export default async function TeacherLeaderboardPage() {
   const profile = await getProfile();
@@ -30,6 +31,7 @@ export default async function TeacherLeaderboardPage() {
       id: true,
       fullName: true,
       rollNumber: true,
+      department: true,
       section: true,
       avatarUrl: true,
       totalScore: true,
@@ -187,8 +189,8 @@ export default async function TeacherLeaderboardPage() {
                         )}
                       </div>
                       <div className="flex items-center gap-3 text-sm text-muted-foreground">
-                        {student.section && (
-                          <span>Section: {student.section}</span>
+                        {(student.department || student.section) && (
+                          <span>{formatDepartmentSection(student.department, student.section)}</span>
                         )}
                         <span>Quizzes: {student.quizzesTaken}</span>
                       </div>

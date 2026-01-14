@@ -30,10 +30,20 @@ import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { useUser } from "@/providers/user-provider";
 import toast from "react-hot-toast";
+import type { Department } from "@/lib/departments";
+import { DEPARTMENT_OPTIONS, SECTION_OPTIONS, departmentRequiresSection } from "@/lib/departments";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 const profileSchema = z.object({
   fullName: z.string().min(2, "Full name must be at least 2 characters"),
   rollNumber: z.string().optional().or(z.literal("")),
+  department: z.string().optional().or(z.literal("")),
   section: z.string().optional().or(z.literal("")),
 });
 
@@ -48,6 +58,8 @@ export default function StudentSettingsPage() {
   const {
     register,
     handleSubmit,
+    setValue,
+    watch,
     formState: { errors, isDirty },
     reset,
   } = useForm<ProfileFormData>({
@@ -55,15 +67,19 @@ export default function StudentSettingsPage() {
     defaultValues: {
       fullName: profile?.fullName || "",
       rollNumber: profile?.rollNumber || "",
+      department: profile?.department || "",
       section: profile?.section || "",
     },
   });
+
+  const selectedDepartment = watch("department");
 
   useEffect(() => {
     if (profile) {
       reset({
         fullName: profile.fullName || "",
         rollNumber: profile.rollNumber || "",
+        department: profile.department || "",
         section: profile.section || "",
       });
       setIsInitialLoading(false);
@@ -85,6 +101,7 @@ export default function StudentSettingsPage() {
         body: JSON.stringify({
           fullName: data.fullName,
           rollNumber: data.rollNumber || null,
+          department: data.department || null,
           section: data.section || null,
         }),
       });
@@ -210,6 +227,35 @@ export default function StudentSettingsPage() {
 
                 <Separator />
 
+                {/* Department */}
+                <div className="space-y-2">
+                  <Label htmlFor="department" className="flex items-center gap-2">
+                    <Building2 className="h-4 w-4 text-muted-foreground" />
+                    Department
+                  </Label>
+                  <Select
+                    value={selectedDepartment}
+                    onValueChange={(value) => {
+                      setValue("department", value, { shouldValidate: true });
+                      if (!departmentRequiresSection(value as Department)) {
+                        setValue("section", "", { shouldValidate: true });
+                      }
+                    }}
+                    disabled={isLoading}
+                  >
+                    <SelectTrigger className="h-11">
+                      <SelectValue placeholder="Select department" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {DEPARTMENT_OPTIONS.map((opt) => (
+                        <SelectItem key={opt.value} value={opt.value}>
+                          {opt.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
                 {/* Roll Number */}
                 <div className="space-y-2">
                   <Label
@@ -236,26 +282,31 @@ export default function StudentSettingsPage() {
 
                 <Separator />
 
-                {/* Section */}
-                <div className="space-y-2">
-                  <Label htmlFor="section" className="flex items-center gap-2">
-                    <Building2 className="h-4 w-4 text-muted-foreground" />
-                    Section
-                  </Label>
-                  <Input
-                    id="section"
-                    placeholder="Enter your section (optional)"
-                    {...register("section")}
-                    disabled={isLoading}
-                    className="h-11"
-                  />
-                  {errors.section && (
-                    <p className="text-sm text-destructive flex items-center gap-1">
-                      <AlertCircle className="h-3 w-3" />
-                      {errors.section.message}
-                    </p>
-                  )}
-                </div>
+                {/* Section (CSE/AIML only) */}
+                {departmentRequiresSection(selectedDepartment as Department) && (
+                  <div className="space-y-2">
+                    <Label htmlFor="section" className="flex items-center gap-2">
+                      <Building2 className="h-4 w-4 text-muted-foreground" />
+                      Section
+                    </Label>
+                    <Select
+                      value={watch("section")}
+                      onValueChange={(value) => setValue("section", value, { shouldValidate: true })}
+                      disabled={isLoading}
+                    >
+                      <SelectTrigger className="h-11">
+                        <SelectValue placeholder="Select section" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {SECTION_OPTIONS.map((s) => (
+                          <SelectItem key={s} value={s}>
+                            Section {s}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
               </CardContent>
             </Card>
 

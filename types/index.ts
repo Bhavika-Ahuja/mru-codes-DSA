@@ -20,7 +20,8 @@ export interface SignupFormData {
   password: string;
   full_name: string;
   roll_number: string;
-  section: string;
+  department: string;
+  section?: string;
   role: 'student' | 'teacher';
 }
 

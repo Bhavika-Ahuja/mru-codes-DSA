@@ -12,6 +12,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import prisma from "@/lib/prisma";
+import { formatDepartmentSection } from "@/lib/departments";
 
 async function getLeaderboard() {
   return await prisma.profile.findMany({
@@ -20,6 +21,7 @@ async function getLeaderboard() {
       id: true,
       fullName: true,
       rollNumber: true,
+      department: true,
       section: true,
       avatarUrl: true,
       totalScore: true,
@@ -94,8 +96,10 @@ export default async function StudentLeaderboardPage() {
       <Tabs defaultValue="global" className="space-y-6">
         <TabsList>
           <TabsTrigger value="global">Global Rankings</TabsTrigger>
-          {profile.section && (
-            <TabsTrigger value="section">Section: {profile.section}</TabsTrigger>
+          {profile.department && profile.section && (
+            <TabsTrigger value="section">
+              {profile.department} • Section {profile.section}
+            </TabsTrigger>
           )}
         </TabsList>
 
@@ -141,7 +145,7 @@ export default async function StudentLeaderboardPage() {
                       {student.fullName}
                     </h3>
                     <p className="text-sm text-muted-foreground">
-                      {student.section}
+                      {formatDepartmentSection(student.department, student.section)}
                     </p>
                     <div className="mt-3 flex items-center gap-1 text-2xl font-bold text-primary">
                       <TrendingUp className="h-5 w-5" />
@@ -187,7 +191,7 @@ export default async function StudentLeaderboardPage() {
                     <div className="flex-1 min-w-0">
                       <p className="font-medium truncate">{student.fullName}</p>
                       <p className="text-sm text-muted-foreground">
-                        {student.section}
+                        {formatDepartmentSection(student.department, student.section)}
                       </p>
                     </div>
                     <div className="text-right">
@@ -209,13 +213,13 @@ export default async function StudentLeaderboardPage() {
               <CardHeader>
                 <CardTitle>Section Rankings</CardTitle>
                 <CardDescription>
-                  Rankings for section: {profile.section}
+                  Rankings for {profile.department} • Section {profile.section}
                 </CardDescription>
               </CardHeader>
               <CardContent>
                 {(() => {
                   const sectionStudents = studentsWithRank
-                    .filter((s) => s.section === profile.section)
+                    .filter((s) => s.department === profile.department && s.section === profile.section)
                     .map((s, i) => ({ ...s, sectionRank: i + 1 }));
 
                   if (sectionStudents.length === 0) {

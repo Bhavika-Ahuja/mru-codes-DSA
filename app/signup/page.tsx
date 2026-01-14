@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Loader2, BookOpen, Sparkles, ArrowRight, User, GraduationCap, Eye, EyeOff } from "lucide-react";
+import { Loader2, BookOpen, Sparkles, ArrowRight, User, GraduationCap, Eye, EyeOff, Building2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -27,6 +27,8 @@ import {
 } from "@/components/ui/select";
 import { createClient } from "@/lib/supabase/client";
 import toast from "react-hot-toast";
+import type { Department } from "@/lib/departments";
+import { DEPARTMENT_OPTIONS, SECTION_OPTIONS, departmentRequiresSection } from "@/lib/departments";
 
 const signupSchema = z.object({
   email: z.string().email("Please enter a valid email"),
@@ -34,11 +36,21 @@ const signupSchema = z.object({
   confirmPassword: z.string().min(6, "Please confirm your password"),
   fullName: z.string().min(2, "Name must be at least 2 characters"),
   rollNumber: z.string().optional(),
+  department: z.string().min(1, "Department is required"),
   section: z.string().optional(),
   role: z.enum(["student", "teacher"]),
 }).refine((data) => data.password === data.confirmPassword, {
   message: "Passwords don't match",
   path: ["confirmPassword"],
+}).refine((data) => {
+  // Section required only for CSE/AIML
+  if (departmentRequiresSection(data.department as Department)) {
+    return Boolean(data.section && data.section.trim().length > 0);
+  }
+  return true;
+}, {
+  message: "Section is required for CSE/AIML",
+  path: ["section"],
 });
 
 type SignupFormData = z.infer<typeof signupSchema>;
@@ -88,10 +100,13 @@ export default function SignupPage() {
     resolver: zodResolver(signupSchema),
     defaultValues: {
       role: "student",
+      department: "",
+      section: "",
     },
   });
 
   const selectedRole = watch("role");
+  const selectedDepartment = watch("department");
 
   const onSubmit = async (data: SignupFormData) => {
     setIsLoading(true);
@@ -105,6 +120,7 @@ export default function SignupPage() {
           data: {
             full_name: data.fullName,
             roll_number: data.rollNumber,
+            department: data.department,
             section: data.section,
             role: data.role,
           },
@@ -308,35 +324,75 @@ export default function SignupPage() {
                   )}
                 </div>
 
+                {/* Department (Student + Teacher) */}
+                <div className="space-y-2">
+                  <Label htmlFor="department" className="flex items-center gap-2">
+                    <Building2 className="h-4 w-4 text-muted-foreground" />
+                    Department
+                  </Label>
+                  <Select
+                    value={selectedDepartment}
+                    onValueChange={(value) => {
+                      setValue("department", value, { shouldValidate: true });
+                      if (!departmentRequiresSection(value as Department)) {
+                        setValue("section", "", { shouldValidate: true });
+                      }
+                    }}
+                    disabled={isLoading}
+                  >
+                    <SelectTrigger className="h-11 bg-background/50 border-border/50">
+                      <SelectValue placeholder="Select department" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {DEPARTMENT_OPTIONS.map((opt) => (
+                        <SelectItem key={opt.value} value={opt.value}>
+                          {opt.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {errors.department && (
+                    <p className="text-sm text-destructive">{errors.department.message}</p>
+                  )}
+                </div>
+
+                {/* Student-only: Roll number */}
                 {selectedRole === "student" && (
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="space-y-2">
-                      <Label htmlFor="rollNumber">Roll Number</Label>
-                      <Input
-                        id="rollNumber"
-                        placeholder="e.g., 21BCS001"
-                        className="h-11 bg-background/50 border-border/50"
-                        {...register("rollNumber")}
-                        disabled={isLoading}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="section">Section</Label>
-                      <Select
-                        onValueChange={(value) => setValue("section", value)}
-                        disabled={isLoading}
-                      >
-                        <SelectTrigger className="h-11 bg-background/50 border-border/50">
-                          <SelectValue placeholder="Select" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="A">Section A</SelectItem>
-                          <SelectItem value="B">Section B</SelectItem>
-                          <SelectItem value="C">Section C</SelectItem>
-                          <SelectItem value="D">Section D</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="rollNumber">Roll Number</Label>
+                    <Input
+                      id="rollNumber"
+                      placeholder="e.g., 21BCS001"
+                      className="h-11 bg-background/50 border-border/50"
+                      {...register("rollNumber")}
+                      disabled={isLoading}
+                    />
+                  </div>
+                )}
+
+                {/* Section (CSE/AIML only; applies to Student + Teacher) */}
+                {departmentRequiresSection(selectedDepartment as Department) && (
+                  <div className="space-y-2">
+                    <Label htmlFor="section">Section</Label>
+                    <Select
+                      value={watch("section")}
+                      onValueChange={(value) => setValue("section", value, { shouldValidate: true })}
+                      disabled={isLoading}
+                    >
+                      <SelectTrigger className="h-11 bg-background/50 border-border/50">
+                        <SelectValue placeholder="Select section" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {SECTION_OPTIONS.map((s) => (
+                          <SelectItem key={s} value={s}>
+                            Section {s}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {errors.section && (
+                      <p className="text-sm text-destructive">{errors.section.message}</p>
+                    )}
                   </div>
                 )}
               </CardContent>

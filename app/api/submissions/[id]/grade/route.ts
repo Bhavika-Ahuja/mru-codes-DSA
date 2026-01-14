@@ -59,6 +59,7 @@ export async function PATCH(
             fullName: true,
             email: true,
             rollNumber: true,
+            department: true,
             section: true,
           },
         },

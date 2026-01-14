@@ -67,8 +67,20 @@ export async function GET() {
       },
     });
 
+    type QuestionMapItem = {
+      id: string;
+      questionText: string;
+      topic: string;
+      difficulty: string;
+      options: { id: string; text: string; is_correct: boolean }[];
+      explanation: string | null;
+      usageCount: number;
+      quizIds: string[];
+      createdAt: string;
+    };
+
     // Group by unique question text and get usage count
-    const questionMap = new Map<string, any>();
+    const questionMap = new Map<string, QuestionMapItem>();
 
     questions.forEach((q) => {
       const key = q.questionText;

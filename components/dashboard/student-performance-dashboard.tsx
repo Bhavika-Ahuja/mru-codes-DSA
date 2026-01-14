@@ -83,13 +83,25 @@ const COLORS = [
 ];
 
 // Enhanced custom tooltip component
-const CustomTooltip = ({ active, payload, label }: any) => {
+type TooltipEntry = {
+  name?: string;
+  value?: number | string;
+  color?: string;
+};
+
+type CustomTooltipProps = {
+  active?: boolean;
+  payload?: TooltipEntry[];
+  label?: string;
+};
+
+const CustomTooltip = ({ active, payload, label }: CustomTooltipProps) => {
   if (active && payload && payload.length) {
     return (
       <div className="bg-popover border border-border rounded-xl shadow-2xl p-4 backdrop-blur-sm">
         <p className="font-bold mb-3 text-foreground text-base border-b border-border pb-2">{label}</p>
         <div className="space-y-2">
-          {payload.map((entry: any, index: number) => (
+          {payload.map((entry, index) => (
             <div key={index} className="flex items-center gap-2">
               <div 
                 className="w-3 h-3 rounded-full" 
@@ -113,9 +125,15 @@ const CustomTooltip = ({ active, payload, label }: any) => {
 };
 
 // Custom label component for pie charts
-const CustomPieLabel = (entry: any) => {
-  return `${entry.topic || entry.difficulty}: ${entry.total || entry.value || 0}`;
+type PieLabelEntry = {
+  topic?: string;
+  difficulty?: string;
+  total?: number;
+  value?: number;
 };
+
+const CustomPieLabel = (entry: PieLabelEntry) =>
+  `${entry.topic || entry.difficulty}: ${entry.total ?? entry.value ?? 0}`;
 
 export function StudentPerformanceDashboard() {
   const [data, setData] = useState<AnalyticsData | null>(null);
@@ -451,9 +469,17 @@ export function StudentPerformanceDashboard() {
                         cx="50%"
                         cy="50%"
                         labelLine={false}
-                        label={(entry: any) => {
-                          const percent = ((entry.total / topicPerformanceData.reduce((sum, t) => sum + t.total, 0)) * 100).toFixed(0);
-                          return { value: `${entry.topic}: ${percent}%`, fill: "hsl(var(--foreground))", fontSize: 12, fontWeight: 500 };
+                        label={(entry: { total: number; topic: string }) => {
+                          const percent = (
+                            (entry.total / topicPerformanceData.reduce((sum, t) => sum + t.total, 0)) *
+                            100
+                          ).toFixed(0);
+                          return {
+                            value: `${entry.topic}: ${percent}%`,
+                            fill: "hsl(var(--foreground))",
+                            fontSize: 12,
+                            fontWeight: 500,
+                          };
                         }}
                         outerRadius={120}
                         innerRadius={40}
@@ -577,9 +603,17 @@ export function StudentPerformanceDashboard() {
                         cx="50%"
                         cy="50%"
                         labelLine={false}
-                        label={(entry: any) => {
-                          const percent = ((entry.total / difficultyPerformanceData.reduce((sum, d) => sum + d.total, 0)) * 100).toFixed(0);
-                          return { value: `${entry.difficulty}: ${percent}%`, fill: "hsl(var(--foreground))", fontSize: 12, fontWeight: 500 };
+                        label={(entry: { total: number; difficulty: string }) => {
+                          const percent = (
+                            (entry.total / difficultyPerformanceData.reduce((sum, d) => sum + d.total, 0)) *
+                            100
+                          ).toFixed(0);
+                          return {
+                            value: `${entry.difficulty}: ${percent}%`,
+                            fill: "hsl(var(--foreground))",
+                            fontSize: 12,
+                            fontWeight: 500,
+                          };
                         }}
                         outerRadius={120}
                         innerRadius={40}

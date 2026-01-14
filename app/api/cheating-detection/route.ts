@@ -51,8 +51,17 @@ export async function GET(request: Request) {
     // For this implementation, we'll return empty arrays as violations
     // are tracked in real-time but not yet stored persistently
 
-    const violations: any[] = [];
-    const sessionViolations: any[] = sessions.map((session) => ({
+    type Violation = unknown;
+    type SessionViolationSummary = {
+      sessionId: string;
+      quizTitle: string;
+      totalViolations: number;
+      studentsAffected: number;
+      startedAt: string;
+    };
+
+    const violations: Violation[] = [];
+    const sessionViolations: SessionViolationSummary[] = sessions.map((session) => ({
       sessionId: session.id,
       quizTitle: session.quiz.title,
       totalViolations: 0, // Would be calculated from violations table

@@ -22,6 +22,7 @@ import {
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { StudentPerformanceDashboard } from "@/components/dashboard/student-performance-dashboard";
+import { formatDepartmentSection } from "@/lib/departments";
 
 export default async function StudentDashboardPage() {
   const profile = await getProfile();
@@ -132,7 +133,7 @@ export default async function StudentDashboardPage() {
               <CardContent>
                 <p className="text-3xl font-bold">--</p>
                 <p className="text-xs text-muted-foreground mt-1">
-                  {profile.section || "No section"}
+                  {formatDepartmentSection(profile.department ?? null, profile.section ?? null)}
                 </p>
               </CardContent>
             </Card>

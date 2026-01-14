@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getProfile } from "@/lib/supabase/server";
 import prisma from "@/lib/prisma";
+import type { DifficultyLevel } from "@prisma/client";
 
 // GET: Get student's quiz history
 export async function GET(request: Request) {
@@ -22,6 +23,9 @@ export async function GET(request: Request) {
     const topic = searchParams.get("topic");
     const difficulty = searchParams.get("difficulty");
 
+    const isDifficultyLevel = (value: string | null): value is DifficultyLevel =>
+      value === "easy" || value === "medium" || value === "hard";
+
     // Get all completed sessions for this student
     const participants = await prisma.sessionParticipant.findMany({
       where: {
@@ -30,7 +34,7 @@ export async function GET(request: Request) {
           status: "completed",
           quiz: {
             ...(topic && topic !== "all" ? { topic } : {}),
-            ...(difficulty && difficulty !== "all" ? { difficulty: difficulty as any } : {}),
+            ...(isDifficultyLevel(difficulty) ? { difficulty } : {}),
           },
         },
       },

@@ -134,6 +134,14 @@ export default async function StudentProfilePage() {
                   </span>
                 </div>
               )}
+              {profile.department && (
+                <div className="flex items-center gap-3 text-sm">
+                  <Building2 className="h-4 w-4 text-muted-foreground shrink-0" />
+                  <span className="text-muted-foreground">
+                    {profile.department}
+                  </span>
+                </div>
+              )}
               {profile.section && (
                 <div className="flex items-center gap-3 text-sm">
                   <Building2 className="h-4 w-4 text-muted-foreground shrink-0" />

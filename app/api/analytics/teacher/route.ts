@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getProfile } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
+import type { Prisma } from "@prisma/client";
 
 // GET /api/analytics/teacher - Get performance analytics for all students and sections
 export async function GET(request: NextRequest) {
@@ -16,7 +17,7 @@ export async function GET(request: NextRequest) {
     const studentId = searchParams.get("studentId");
 
     // Get all students with their performance metrics
-    const studentsQuery: any = {
+    const studentsQuery: Prisma.ProfileWhereInput = {
       role: "student",
     };
 
