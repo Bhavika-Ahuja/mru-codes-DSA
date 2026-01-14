@@ -31,6 +31,7 @@ import { Progress } from "@/components/ui/progress";
 import { createClient } from "@/lib/supabase/client";
 import { useAntiCheat } from "@/hooks/use-anti-cheat";
 import { useFullscreenCheck } from "@/hooks/use-fullscreen-check";
+import { cn } from "@/lib/utils";
 
 interface QuestionOption {
   id: string;
@@ -70,12 +71,6 @@ interface SessionData {
   questionsAnswered?: number;
 }
 
-interface SubmissionResult {
-  isCorrect: boolean;
-  score: number;
-  correctOptionId: string;
-  explanation: string | null;
-}
 
 export default function StudentPlayPage() {
   const params = useParams();
@@ -90,13 +85,14 @@ export default function StudentPlayPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedOption, setSelectedOption] = useState<string | null>(null);
   const [hasAnswered, setHasAnswered] = useState(false);
-  const [submissionResult, setSubmissionResult] = useState<SubmissionResult | null>(null);
   const [timeRemaining, setTimeRemaining] = useState(0);
   const [totalScore, setTotalScore] = useState(0);
   const [currentQuestionId, setCurrentQuestionId] = useState<string | null>(null);
   const [isMovingToNext, setIsMovingToNext] = useState(false);
   const [showAllQuestions, setShowAllQuestions] = useState(false);
   const [fullscreenGranted, setFullscreenGranted] = useState(false);
+  const [showQuestionSidebar, setShowQuestionSidebar] = useState(false);
+  const [questionSubmissions, setQuestionSubmissions] = useState<Map<string, string>>(new Map());
   const [fullscreenWarningTimer, setFullscreenWarningTimer] = useState(0);
 
   // Use screenfull library for reliable fullscreen detection
@@ -122,8 +118,8 @@ export default function StudentPlayPage() {
     }
   }, [session?.status, fullscreenGranted, isFullscreen]);
 
-  // Submit answer
-  const submitAnswer = useCallback(async () => {
+  // Save answer silently (don't show correct/incorrect)
+  const saveAnswer = useCallback(async () => {
     if (!session?.currentQuestion || !selectedOption || hasAnswered) return;
 
     setIsSubmitting(true);
@@ -143,35 +139,85 @@ export default function StudentPlayPage() {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || "Failed to submit answer");
+        throw new Error(data.error || "Failed to save answer");
       }
 
-      setSubmissionResult(data.submission);
+      // Save the answer silently - don't show correct/incorrect
       setTotalScore((prev) => prev + data.submission.score);
-
-      if (data.submission.isCorrect) {
-        toast.success(`Correct! +${data.submission.score} points`);
-      } else {
-        toast.error("Incorrect answer");
-      }
+      setQuestionSubmissions(prev => new Map(prev).set(session.currentQuestion!.id, selectedOption));
     } catch (error) {
-      console.error("Error submitting answer:", error);
-      toast.error(
-        error instanceof Error ? error.message : "Failed to submit"
-      );
+      console.error("Error saving answer:", error);
       setHasAnswered(false);
     } finally {
       setIsSubmitting(false);
     }
   }, [session, selectedOption, hasAnswered, sessionId, timeRemaining]);
 
+  // Jump to a specific question - optimized for speed
+  const jumpToQuestion = async (questionIndex: number) => {
+    if (!session || questionIndex < 0 || questionIndex >= session.quiz.totalQuestions) return;
+    if (isMovingToNext) return; // Prevent double clicks
+
+    setIsMovingToNext(true);
+
+    // Save current answer if selected (but don't submit if not saved yet)
+    if (selectedOption && session.currentQuestion && !hasAnswered) {
+      setQuestionSubmissions(prev => new Map(prev).set(session.currentQuestion!.id, selectedOption));
+    }
+
+    // Optimistic UI update - update state immediately for instant feedback
+    const targetQuestion = session.quiz.questions?.[questionIndex];
+    if (targetQuestion) {
+      setSession(prev => prev ? {
+        ...prev,
+        currentQuestionIndex: questionIndex,
+        currentQuestion: targetQuestion,
+      } : null);
+
+      // Load saved answer for the new question
+      const savedAnswer = questionSubmissions.get(targetQuestion.id);
+      if (savedAnswer) {
+        setSelectedOption(savedAnswer);
+        setHasAnswered(true);
+      } else {
+        setSelectedOption(null);
+        setHasAnswered(false);
+      }
+    }
+
+    setShowQuestionSidebar(false);
+
+    // Background API call - don't block UI
+    try {
+      const response = await fetch(`/api/sessions/${sessionId}/jump-question`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ questionIndex }),
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || "Failed to jump to question");
+      }
+
+      // Silently sync in background
+      fetchSession().catch(err => console.error("Background sync error:", err));
+    } catch (error) {
+      console.error("Error jumping to question:", error);
+      // Revert on error
+      fetchSession();
+    } finally {
+      setIsMovingToNext(false);
+    }
+  };
+
   // Anti-cheat system
   const handleViolation = useCallback(
     (type: string) => {
       if (type === "max_violations" && session?.status === "live") {
-        // Auto-submit current answer if available and exit
+        // Auto-save current answer if available and exit
         if (selectedOption && !hasAnswered) {
-          submitAnswer();
+          saveAnswer();
         }
         // Redirect after a delay
         setTimeout(() => {
@@ -180,7 +226,7 @@ export default function StudentPlayPage() {
         }, 2000);
       }
     },
-    [session, selectedOption, hasAnswered, submitAnswer, router]
+    [session, selectedOption, hasAnswered, saveAnswer, router]
   );
 
   // Only enable anti-cheat when quiz is live and fullscreen is granted
@@ -192,7 +238,7 @@ export default function StudentPlayPage() {
     onViolation: handleViolation,
   });
 
-  // Fetch session data
+  // Fetch session data and load saved answers
   const fetchSession = useCallback(async () => {
     try {
       const response = await fetch(`/api/sessions/${sessionId}`);
@@ -205,12 +251,36 @@ export default function StudentPlayPage() {
       setSession(data.session);
       setHasJoined(data.isParticipant);
 
+      // Load saved submissions for all questions
+      const submissionsMap = new Map<string, string>();
+      if (data.session.quiz?.questions) {
+        const submissionsResponse = await fetch(`/api/sessions/${sessionId}/submissions`);
+        if (submissionsResponse.ok) {
+          const submissionsData = await submissionsResponse.json();
+          if (submissionsData.submissions) {
+            submissionsData.submissions.forEach((sub: { questionId: string; selectedOptionId: string }) => {
+              if (sub.selectedOptionId) {
+                submissionsMap.set(sub.questionId, sub.selectedOptionId);
+              }
+            });
+            setQuestionSubmissions(submissionsMap);
+          }
+        }
+      }
+
       // Reset answer state on new question if question changed
       if (data.session.currentQuestion?.id !== currentQuestionId) {
         setCurrentQuestionId(data.session.currentQuestion?.id || null);
-        setSelectedOption(null);
-        setHasAnswered(false);
-        setSubmissionResult(null);
+        const currentQId = data.session.currentQuestion?.id;
+
+        // Load saved answer for current question if exists
+        if (currentQId && submissionsMap.has(currentQId)) {
+          setSelectedOption(submissionsMap.get(currentQId) || null);
+          setHasAnswered(true);
+        } else {
+          setSelectedOption(null);
+          setHasAnswered(false);
+        }
       }
     } catch (error) {
       console.error("Error fetching session:", error);
@@ -247,7 +317,6 @@ export default function StudentPlayPage() {
         // New question - refetch and reset state
         setSelectedOption(null);
         setHasAnswered(false);
-        setSubmissionResult(null);
         fetchSession();
       })
       .on("broadcast", { event: "session_end" }, () => {
@@ -283,7 +352,6 @@ export default function StudentPlayPage() {
           // Reset state and refetch when current_question_id changes
           setSelectedOption(null);
           setHasAnswered(false);
-          setSubmissionResult(null);
           fetchSession();
         }
       )
@@ -374,11 +442,18 @@ export default function StudentPlayPage() {
             data.message || "Location access is required to join this quiz"
           );
         }
+
+        if (data.alreadyCompleted) {
+          throw new Error(
+            data.error ||
+            "You have already completed this quiz and cannot join it again."
+          );
+        }
+
         throw new Error(data.error || data.message || "Failed to join session");
       }
 
       setHasJoined(true);
-      toast.success("You've joined the quiz!");
       fetchSession();
     } catch (error) {
       console.error("Error joining session:", error);
@@ -400,40 +475,6 @@ export default function StudentPlayPage() {
     }, 500);
   };
 
-  const moveToNextQuestion = async () => {
-    if (!session) return;
-
-    setIsMovingToNext(true);
-    try {
-      const response = await fetch(`/api/sessions/${sessionId}/next-question`, {
-        method: "POST",
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || "Failed to move to next question");
-      }
-
-      if (data.isComplete) {
-        toast.success("You've completed all questions!");
-        await fetchSession();
-      } else {
-        // Reset state for new question
-        setSelectedOption(null);
-        setHasAnswered(false);
-        setSubmissionResult(null);
-        await fetchSession();
-      }
-    } catch (error) {
-      console.error("Error moving to next question:", error);
-      toast.error(
-        error instanceof Error ? error.message : "Failed to move to next question"
-      );
-    } finally {
-      setIsMovingToNext(false);
-    }
-  };
 
   // Format time as MM:SS
   const formatTime = (seconds: number): string => {
@@ -727,7 +768,7 @@ export default function StudentPlayPage() {
   }
 
   return (
-    <div className="max-w-2xl mx-auto space-y-6">
+    <div className="max-w-6xl mx-auto space-y-6 p-4">
       {/* Completion Banner - Show when all questions are answered */}
       {(session.questionsAnswered ?? 0) >= session.quiz.totalQuestions && (
         <Card className="border-2 border-primary/30 bg-linear-to-b from-primary/10 via-primary/5 to-transparent">
@@ -752,7 +793,7 @@ export default function StudentPlayPage() {
                 onClick={() => router.push("/student/dashboard")}
               >
                 <PartyPopper className="h-4 w-4 mr-2" />
-                Acknowledge & Exit
+                Submit Quiz & Exit
               </Button>
             </div>
           </CardContent>
@@ -853,210 +894,252 @@ export default function StudentPlayPage() {
         </Card>
       )}
 
-      {/* Header with timer and score */}
-      <div className="flex items-center justify-between">
-        <Badge variant="outline" className="text-lg px-4 py-2">
-          Question {session.currentQuestionIndex + 1} /{" "}
-          {session.quiz.totalQuestions}
-        </Badge>
-        <div className="flex items-center gap-4">
-          <div className="flex items-center gap-2">
-            <Trophy className="h-5 w-5 text-amber-500" />
-            <span className="font-bold">{totalScore}</span>
+      {/* Main Content Area */}
+      <div className="flex gap-4 relative">
+        {/* Question Navigation Sidebar */}
+        {showQuestionSidebar && session.quiz.questions && (
+          <div className="hidden md:block w-20 shrink-0">
+            <Card className="sticky top-4">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-xs">Questions</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-1">
+                {session.quiz.questions.map((q, index) => {
+                  const isCurrent = index === session.currentQuestionIndex;
+                  const hasAnswer = questionSubmissions.has(q.id);
+                  return (
+                    <button
+                      key={q.id}
+                      onClick={() => jumpToQuestion(index)}
+                      className={cn(
+                        "w-full aspect-square rounded-lg text-sm font-medium transition-all duration-150 cursor-pointer active:scale-90",
+                        isCurrent
+                          ? "bg-primary text-primary-foreground shadow-md"
+                          : hasAnswer
+                            ? "bg-primary/20 text-primary border border-primary/30 hover:bg-primary/30"
+                            : "bg-muted hover:bg-muted/80 hover:scale-105"
+                      )}
+                      disabled={isMovingToNext}
+                    >
+                      {index + 1}
+                    </button>
+                  );
+                })}
+              </CardContent>
+            </Card>
           </div>
-          <div
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg ${timeRemaining <= 60
-              ? "bg-red-500/10 text-red-500"
-              : "bg-muted"
-              }`}
-          >
-            <Clock className="h-5 w-5" />
-            <span className="text-2xl font-mono font-bold">
-              {formatTime(timeRemaining)}
-            </span>
+        )}
+
+        {/* Mobile Question Navigation */}
+        {showQuestionSidebar && session.quiz.questions && (
+          <div className="fixed inset-0 bg-black/50 z-40 md:hidden" onClick={() => setShowQuestionSidebar(false)}>
+            <div className="absolute bottom-0 left-0 right-0 bg-background border-t rounded-t-xl p-4 max-h-[60vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="font-semibold">Questions</h3>
+                <Button variant="ghost" size="sm" onClick={() => setShowQuestionSidebar(false)}>
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+              <div className="grid grid-cols-5 gap-2">
+                {session.quiz.questions.map((q, index) => {
+                  const isCurrent = index === session.currentQuestionIndex;
+                  const hasAnswer = questionSubmissions.has(q.id);
+                  return (
+                    <button
+                      key={q.id}
+                      onClick={() => jumpToQuestion(index)}
+                      className={cn(
+                        "aspect-square rounded-lg text-sm font-medium transition-all duration-150 cursor-pointer active:scale-90",
+                        isCurrent
+                          ? "bg-primary text-primary-foreground shadow-md"
+                          : hasAnswer
+                            ? "bg-primary/20 text-primary border border-primary/30 hover:bg-primary/30"
+                            : "bg-muted hover:bg-muted/80"
+                      )}
+                      disabled={isMovingToNext}
+                    >
+                      {index + 1}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
           </div>
-        </div>
-      </div>
+        )}
 
-      {/* Timer progress */}
-      <Progress
-        value={(timeRemaining / session.quiz.timeLimit) * 100}
-        className={`h-2 ${timeRemaining <= 60 ? "[&>div]:bg-red-500" : ""}`}
-      />
-
-      {/* Question Card */}
-      <Card className="border-primary/20">
-        <CardHeader>
-          <CardTitle className="text-xl leading-relaxed">
-            {currentQuestion.questionText}
-          </CardTitle>
-          <CardDescription>
-            {currentQuestion.points} points
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          {currentQuestion.options.map((option, index) => {
-            const isSelected = selectedOption === option.id;
-            const isCorrect =
-              submissionResult?.correctOptionId === option.id;
-            const isWrong =
-              hasAnswered && isSelected && !submissionResult?.isCorrect;
-
-            let optionClass =
-              "flex items-center gap-4 p-4 rounded-xl border-2 transition-all cursor-pointer";
-
-            if (hasAnswered) {
-              if (isCorrect) {
-                optionClass += " border-green-500 bg-green-500/10";
-              } else if (isWrong) {
-                optionClass += " border-red-500 bg-red-500/10";
-              } else {
-                optionClass += " border-border opacity-50";
-              }
-            } else if (isSelected) {
-              optionClass += " border-primary bg-primary/5";
-            } else {
-              optionClass +=
-                " border-border hover:border-primary/50 hover:bg-muted/50";
-            }
-
-            return (
-              <button
-                key={option.id}
-                className={optionClass}
-                onClick={() => !hasAnswered && setSelectedOption(option.id)}
-                disabled={hasAnswered || isSubmitting}
+        <div className="flex-1 space-y-4">
+          {/* Header with timer and score */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                className="cursor-pointer transition-all hover:scale-110 active:scale-90"
+                onClick={() => jumpToQuestion(Math.max(0, session.currentQuestionIndex - 1))}
+                disabled={session.currentQuestionIndex === 0 || isMovingToNext}
               >
-                <span
-                  className={`w-10 h-10 rounded-lg flex items-center justify-center text-lg font-bold ${isSelected && !hasAnswered
-                    ? "bg-primary text-primary-foreground"
-                    : isCorrect
-                      ? "bg-green-500 text-white"
-                      : isWrong
-                        ? "bg-red-500 text-white"
-                        : "bg-muted"
-                    }`}
-                >
-                  {String.fromCharCode(65 + index)}
+                <ChevronRight className="h-4 w-4 rotate-180" />
+              </Button>
+              <Badge variant="outline" className="text-lg px-4 py-2">
+                Question {session.currentQuestionIndex + 1} /{" "}
+                {session.quiz.totalQuestions}
+              </Badge>
+              <Button
+                variant="outline"
+                size="sm"
+                className="cursor-pointer transition-all hover:scale-110 active:scale-90"
+                onClick={() => jumpToQuestion(Math.min(session.quiz.totalQuestions - 1, session.currentQuestionIndex + 1))}
+                disabled={session.currentQuestionIndex >= session.quiz.totalQuestions - 1 || isMovingToNext}
+              >
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            </div>
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2">
+                <Trophy className="h-5 w-5 text-amber-500" />
+                <span className="font-bold">{totalScore}</span>
+              </div>
+              <div
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg ${timeRemaining <= 60
+                  ? "bg-red-500/10 text-red-500"
+                  : "bg-muted"
+                  }`}
+              >
+                <Clock className="h-5 w-5" />
+                <span className="text-2xl font-mono font-bold">
+                  {formatTime(timeRemaining)}
                 </span>
-                <span className="flex-1 text-left text-lg">{option.text}</span>
-                {hasAnswered && isCorrect && (
-                  <Check className="h-6 w-6 text-green-500" />
-                )}
-                {isWrong && <X className="h-6 w-6 text-red-500" />}
-              </button>
-            );
-          })}
-        </CardContent>
-      </Card>
+              </div>
+            </div>
+          </div>
 
-      {/* Submit button or result */}
-      {!hasAnswered ? (
-        <Button
-          size="lg"
-          className="w-full h-14 text-lg"
-          onClick={submitAnswer}
-          disabled={!selectedOption || isSubmitting}
-        >
-          {isSubmitting ? (
-            <>
-              <Loader2 className="h-5 w-5 mr-2 animate-spin" />
-              Submitting...
-            </>
-          ) : (
-            "Submit Answer"
-          )}
-        </Button>
-      ) : submissionResult ? (
-        <Card
-          className={
-            submissionResult.isCorrect
-              ? "border-green-500/50 bg-green-500/5"
-              : "border-red-500/50 bg-red-500/5"
-          }
-        >
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-3 mb-3">
-              {submissionResult.isCorrect ? (
+          {/* Timer progress */}
+          <Progress
+            value={(timeRemaining / session.quiz.timeLimit) * 100}
+            className={`h-2 ${timeRemaining <= 60 ? "[&>div]:bg-red-500" : ""}`}
+          />
+
+          {/* Question Card */}
+          <Card className="border-primary/20">
+            <CardHeader>
+              <CardTitle className="text-xl leading-relaxed">
+                {currentQuestion.questionText}
+              </CardTitle>
+              <CardDescription>
+                {currentQuestion.points} points
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {currentQuestion.options.map((option, index) => {
+                const isSelected = selectedOption === option.id;
+
+                let optionClass =
+                  "flex items-center gap-4 p-4 rounded-xl border-2 transition-all duration-150 cursor-pointer active:scale-[0.98]";
+
+                if (isSelected) {
+                  optionClass += " border-foreground bg-primary/10 shadow-sm";
+                } else {
+                  optionClass +=
+                    " border-border hover:border-primary/50 hover:bg-muted/50 hover:scale-[1.01]";
+                }
+
+                return (
+                  <button
+                    key={option.id}
+                    className={`${optionClass} w-full`}
+                    onClick={() => setSelectedOption(option.id)}
+                    disabled={isSubmitting}
+                  >
+                    <span
+                      className={`w-10 h-10 rounded-lg flex items-center justify-center text-lg font-bold ${isSelected
+                        ? "bg-primary text-primary-foreground"
+                        : "bg-muted"
+                        }`}
+                    >
+                      {String.fromCharCode(65 + index)}
+                    </span>
+                    <span className="flex-1 text-left text-lg">{option.text}</span>
+                  </button>
+                );
+              })}
+            </CardContent>
+          </Card>
+
+          {/* Proceed button */}
+          <div className="flex gap-3">
+            <Button
+              size="lg"
+              className="flex-1 h-14 text-lg cursor-pointer transition-all hover:scale-[1.02] active:scale-[0.98]"
+              onClick={saveAnswer}
+              disabled={!selectedOption || isSubmitting || hasAnswered}
+            >
+              {isSubmitting ? (
                 <>
-                  <Check className="h-6 w-6 text-green-500" />
-                  <span className="font-semibold text-green-600">
-                    Correct! +{submissionResult.score} points
-                  </span>
+                  <Loader2 className="h-5 w-5 mr-2 animate-spin" />
+                  Processing...
                 </>
               ) : (
-                <>
-                  <X className="h-6 w-6 text-red-500" />
-                  <span className="font-semibold text-red-600">
-                    Incorrect
-                  </span>
-                </>
+                "Proceed"
               )}
-            </div>
-            {submissionResult.explanation && (
-              <p className="text-sm text-muted-foreground">
-                {submissionResult.explanation}
-              </p>
-            )}
-            {(session.questionsAnswered ?? 0) >= session.quiz.totalQuestions ? (
-              // All questions completed - show prominent completion section
-              <div className="space-y-4 mt-6">
-                <div className="p-6 bg-primary/10 border-2 border-primary/20 rounded-xl text-center">
+            </Button>
+            <Button
+              size="lg"
+              variant="outline"
+              className="h-14 cursor-pointer transition-all hover:scale-105 active:scale-95"
+              onClick={() => setShowQuestionSidebar(!showQuestionSidebar)}
+            >
+              <List className="h-5 w-5" />
+            </Button>
+          </div>
+
+          {/* Navigation buttons */}
+          <div className="flex gap-3">
+            <Button
+              variant="outline"
+              className="flex-1 cursor-pointer transition-all hover:scale-[1.02] active:scale-[0.98]"
+              onClick={() => jumpToQuestion(Math.max(0, session.currentQuestionIndex - 1))}
+              disabled={session.currentQuestionIndex === 0 || isMovingToNext}
+            >
+              <ChevronRight className="h-4 w-4 mr-2 rotate-180" />
+              Previous
+            </Button>
+            <Button
+              variant="outline"
+              className="flex-1 cursor-pointer transition-all hover:scale-[1.02] active:scale-[0.98]"
+              onClick={() => jumpToQuestion(Math.min(session.quiz.totalQuestions - 1, session.currentQuestionIndex + 1))}
+              disabled={session.currentQuestionIndex >= session.quiz.totalQuestions - 1 || isMovingToNext}
+            >
+              Next
+              <ChevronRight className="h-4 w-4 ml-2" />
+            </Button>
+          </div>
+
+          {/* Completion message */}
+          {(session.questionsAnswered ?? 0) >= session.quiz.totalQuestions && (
+            <Card className="border-primary/20 bg-primary/5">
+              <CardContent className="pt-6">
+                <div className="text-center space-y-4">
                   <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-primary/20 mb-4">
                     <Check className="h-8 w-8 text-primary" />
                   </div>
-                  <h3 className="text-xl font-bold mb-2 text-foreground">
-                    All Questions Completed!
-                  </h3>
-                  <p className="text-sm text-muted-foreground mb-4">
-                    You have answered all {session.quiz.totalQuestions} questions. Your test has been submitted.
+                  <h3 className="text-xl font-bold">All Questions Completed!</h3>
+                  <p className="text-sm text-muted-foreground">
+                    You have answered all {session.quiz.totalQuestions} questions.
                   </p>
-                  <div className="flex flex-col sm:flex-row gap-3">
-                    <Button
-                      size="lg"
-                      variant="outline"
-                      className="flex-1 cursor-pointer"
-                      onClick={() => setShowAllQuestions(true)}
-                    >
-                      <List className="h-4 w-4 mr-2" />
-                      Review All Questions
-                    </Button>
-                    <Button
-                      size="lg"
-                      className="flex-1 cursor-pointer bg-primary hover:bg-primary/90 text-primary-foreground"
-                      onClick={handleSubmitQuiz}
-                    >
-                      <PartyPopper className="h-4 w-4 mr-2" />
-                      Submit Quiz
-                    </Button>
-                  </div>
+                  <Button
+                    size="lg"
+                    className="w-full cursor-pointer transition-all hover:scale-[1.02] active:scale-[0.98]"
+                    onClick={handleSubmitQuiz}
+                  >
+                    <PartyPopper className="h-4 w-4 mr-2" />
+                    Submit Quiz
+                  </Button>
                 </div>
-              </div>
-            ) : (
-              <Button
-                size="lg"
-                className="w-full mt-4 cursor-pointer"
-                onClick={moveToNextQuestion}
-                disabled={isMovingToNext || (session.currentQuestionIndex >= session.quiz.totalQuestions - 1)}
-              >
-                {isMovingToNext ? (
-                  <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Loading...
-                  </>
-                ) : session.currentQuestionIndex >= session.quiz.totalQuestions - 1 ? (
-                  "All Questions Completed"
-                ) : (
-                  <>
-                    Next Question
-                    <ChevronRight className="h-4 w-4 ml-2" />
-                  </>
-                )}
-              </Button>
-            )}
-          </CardContent>
-        </Card>
-      ) : null}
+              </CardContent>
+            </Card>
+          )}
+        </div>
+      </div>
 
       {/* All Questions Review Modal */}
       {showAllQuestions && session.quiz.questions && (
@@ -1104,7 +1187,7 @@ export default function StudentPlayPage() {
             <div className="p-6 border-t shrink-0">
               <Button
                 size="lg"
-                className="w-full"
+                className="w-full cursor-pointer transition-all hover:scale-[1.02] active:scale-[0.98]"
                 onClick={() => {
                   setShowAllQuestions(false);
                   handleSubmitQuiz();

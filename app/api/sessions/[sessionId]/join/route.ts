@@ -29,7 +29,11 @@ export async function POST(
       where: { id: sessionId },
       include: {
         quiz: {
-          select: { title: true, geolocationEnabled: true },
+          select: {
+            title: true,
+            geolocationEnabled: true,
+            totalQuestions: true,
+          },
         },
       },
     });
@@ -98,6 +102,22 @@ export async function POST(
     });
 
     if (existingParticipant) {
+      // If student has already completed this quiz (answered all questions),
+      // block re-joining the same session
+      if (
+        typeof existingParticipant.questionsAnswered === "number" &&
+        typeof session.quiz.totalQuestions === "number" &&
+        existingParticipant.questionsAnswered >= session.quiz.totalQuestions
+      ) {
+        return NextResponse.json(
+          {
+            error: "You have already completed this quiz and cannot join it again.",
+            alreadyCompleted: true,
+          },
+          { status: 403 }
+        );
+      }
+
       return NextResponse.json({
         success: true,
         message: "Already joined",

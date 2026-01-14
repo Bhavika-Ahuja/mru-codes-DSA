@@ -172,14 +172,13 @@ export async function POST(
       }
     );
 
+    // Don't return correct answers during quiz - only return success
     return NextResponse.json({
       success: true,
       submission: {
         id: result.id,
-        isCorrect,
         score,
-        correctOptionId: correctOption?.id,
-        explanation: question.explanation,
+        // Don't expose isCorrect, correctOptionId, or explanation during quiz
       },
     });
   } catch (error) {

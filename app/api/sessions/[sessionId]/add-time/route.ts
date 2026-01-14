@@ -71,8 +71,8 @@ export async function POST(
 
     const { seconds } = validation.data;
 
-    // Add time by moving startedAt earlier (effectively extending the duration)
-    const newStartedAt = new Date(session.startedAt.getTime() - seconds * 1000);
+    // Add time by moving startedAt later (reducing elapsed time, increasing remaining time)
+    const newStartedAt = new Date(session.startedAt.getTime() + seconds * 1000);
 
     // Update the session
     const updatedSession = await prisma.quizSession.update({

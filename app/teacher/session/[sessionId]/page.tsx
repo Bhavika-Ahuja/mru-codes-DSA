@@ -250,6 +250,8 @@ export default function TeacherSessionPage() {
 
   // Add time to the session
   const addTime = async (seconds: number) => {
+    if (isActionLoading) return; // Prevent multiple simultaneous requests
+    
     setIsActionLoading(true);
     try {
       const response = await fetch(`/api/sessions/${sessionId}/add-time`, {
@@ -266,13 +268,18 @@ export default function TeacherSessionPage() {
 
       toast.success(`Added ${Math.floor(seconds / 60)} minute(s) to the quiz!`);
       
-      // Refetch session to get updated startedAt
-      await fetchSession();
+      // Optimistically update timeRemaining immediately for instant feedback
+      setTimeRemaining(prev => Math.max(0, prev + seconds));
+      
+      // Refetch session to get updated startedAt (in background)
+      fetchSession().catch(err => console.error("Error refetching session:", err));
     } catch (error) {
       console.error("Error adding time:", error);
       toast.error(
         error instanceof Error ? error.message : "Failed to add time"
       );
+      // Revert optimistic update on error
+      await fetchSession();
     } finally {
       setIsActionLoading(false);
     }
@@ -447,7 +454,7 @@ export default function TeacherSessionPage() {
                         variant="outline"
                         onClick={() => addTime(60)}
                         disabled={isActionLoading}
-                        className="gap-2"
+                        className="gap-2 cursor-pointer transition-all hover:scale-105 active:scale-95"
                       >
                         <Clock className="h-4 w-4" />
                         +1 min
