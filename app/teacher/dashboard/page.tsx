@@ -184,7 +184,7 @@ export default async function TeacherDashboardPage() {
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <Link href="/teacher/analytics">
+                  <Link href="/teacher/performance">
                     <Button variant="outline" className="w-full">
                       View Reports
                     </Button>
