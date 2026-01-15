@@ -127,6 +127,8 @@ export function FileUpload(props: FileUploadProps) {
   const displayFileName = uploadedFileName || file?.name;
   const displayFileSize = file ? formatFileSize(file.size) : null;
 
+  const canInteract = !disabled && !uploading;
+
   return (
     <div className="space-y-2">
       {label && (
@@ -140,11 +142,26 @@ export function FileUpload(props: FileUploadProps) {
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
+        onClick={() => {
+          if (!canInteract) return;
+          fileInputRef.current?.click();
+        }}
+        onKeyDown={(e) => {
+          if (!canInteract) return;
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            fileInputRef.current?.click();
+          }
+        }}
+        role="button"
+        tabIndex={canInteract ? 0 : -1}
+        aria-disabled={!canInteract}
         className={cn(
-          "relative border-2 border-dashed rounded-lg transition-all duration-200",
+          "group relative border-2 border-dashed rounded-lg transition-all duration-200 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ring-offset-background will-change-transform",
           isDragging && !disabled && !uploading
             ? "border-primary bg-primary/5 scale-[1.02]"
-            : "border-border hover:border-primary/50",
+            : "border-border hover:border-primary/60 hover:bg-muted/20 hover:shadow-sm hover:shadow-primary/10 hover:-translate-y-0.5 hover:scale-[1.01] active:translate-y-0 active:scale-[0.99]",
+          canInteract ? "cursor-pointer" : "",
           disabled && "opacity-50 cursor-not-allowed",
           uploading && "opacity-75 cursor-wait",
           hasFile && !uploading && "border-green-500/50 bg-green-500/5"
@@ -205,15 +222,18 @@ export function FileUpload(props: FileUploadProps) {
         ) : (
           <div className="p-12">
             <div className="flex flex-col items-center justify-center text-center space-y-4">
-              <div className="h-16 w-16 rounded-full bg-muted flex items-center justify-center">
-                <Upload className="h-8 w-8 text-muted-foreground" />
+              <div className="h-16 w-16 rounded-full bg-muted flex items-center justify-center transition-transform duration-200 ease-out group-hover:scale-110 group-hover:-translate-y-0.5">
+                <Upload className="h-8 w-8 text-muted-foreground transition-colors duration-200 group-hover:text-primary" />
               </div>
               <div className="space-y-1">
                 <p className="text-sm font-medium">
                   Drag and drop your PDF here, or{" "}
                   <button
                     type="button"
-                    onClick={() => fileInputRef.current?.click()}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      fileInputRef.current?.click();
+                    }}
                     disabled={disabled}
                     className="text-primary hover:underline font-medium cursor-pointer"
                   >
@@ -228,9 +248,12 @@ export function FileUpload(props: FileUploadProps) {
                 type="button"
                 variant="outline"
                 size="sm"
-                onClick={() => fileInputRef.current?.click()}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  fileInputRef.current?.click();
+                }}
                 disabled={disabled}
-                className="mt-2"
+                className="mt-2 transition-transform duration-200 group-hover:scale-[1.02]"
               >
                 <Upload className="h-4 w-4 mr-2" />
                 Select File
