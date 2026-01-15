@@ -419,7 +419,7 @@ export default function HomePage() {
               <div>© {new Date().getFullYear()} Manav Rachna University. All rights reserved.</div>
               <div className="mt-1">
                 Made by {" "}
-                <span className="font-semibold text-foreground">Harsh Thakur</span>
+                <span className="font-semibold text-foreground">Harsh Thakur & Team</span>
               </div>
             </div>
           </div>

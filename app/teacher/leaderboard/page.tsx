@@ -12,6 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import prisma from "@/lib/prisma";
 import { formatDepartmentSection } from "@/lib/departments";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export default async function TeacherLeaderboardPage() {
   const profile = await getProfile();
@@ -40,6 +41,19 @@ export default async function TeacherLeaderboardPage() {
     orderBy: { totalScore: "desc" },
     take: 50,
   });
+
+  const studentsWithRank = leaderboard.map((s, idx) => ({ ...s, rank: idx + 1 }));
+  const departments = [
+    ...new Set(studentsWithRank.map((s) => s.department).filter(Boolean)),
+  ].sort();
+
+  const departmentSectionGroups = [
+    ...new Set(
+      studentsWithRank
+        .map((s) => (s.department && s.section ? `${s.department}__${s.section}` : null))
+        .filter(Boolean)
+    ),
+  ].sort();
 
   const getRankIcon = (rank: number) => {
     switch (rank) {
@@ -124,90 +138,198 @@ export default async function TeacherLeaderboardPage() {
         </Card>
       </div>
 
-      {/* Leaderboard Table */}
-      <Card className="border-border/50">
-        <CardHeader>
-          <CardTitle>Top Performers</CardTitle>
-          <CardDescription>
-            Students ranked by total points earned
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {leaderboard.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-12 text-center">
-              <Trophy className="h-12 w-12 text-muted-foreground mb-4" />
-              <h3 className="font-semibold text-lg mb-2">No rankings yet</h3>
-              <p className="text-muted-foreground max-w-sm">
-                Students will appear here once they start participating in
-                quizzes.
-              </p>
-            </div>
+      <Tabs defaultValue="global" className="space-y-4">
+        <TabsList>
+          <TabsTrigger value="global">Global</TabsTrigger>
+          <TabsTrigger value="department">By Department</TabsTrigger>
+          <TabsTrigger value="section">By Department • Section</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="global">
+          <Card className="border-border/50">
+            <CardHeader>
+              <CardTitle>Top Performers</CardTitle>
+              <CardDescription>
+                Students ranked by total points earned
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {studentsWithRank.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-12 text-center">
+                  <Trophy className="h-12 w-12 text-muted-foreground mb-4" />
+                  <h3 className="font-semibold text-lg mb-2">No rankings yet</h3>
+                  <p className="text-muted-foreground max-w-sm">
+                    Students will appear here once they start participating in quizzes.
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {studentsWithRank.map((student) => {
+                    const rank = student.rank;
+                    const initials = student.fullName
+                      .split(" ")
+                      .map((n: string) => n[0])
+                      .join("")
+                      .toUpperCase()
+                      .slice(0, 2);
+
+                    return (
+                      <div
+                        key={student.id}
+                        className={`flex items-center gap-4 p-4 rounded-lg border transition-colors ${getRankBg(
+                          rank
+                        )}`}
+                      >
+                        <div className="flex items-center justify-center w-12 h-12 shrink-0">
+                          {getRankIcon(rank)}
+                        </div>
+
+                        <Avatar className="h-10 w-10 shrink-0">
+                          <AvatarImage
+                            src={student.avatarUrl || undefined}
+                            alt={student.fullName}
+                          />
+                          <AvatarFallback className="bg-primary/10 text-primary text-sm">
+                            {initials}
+                          </AvatarFallback>
+                        </Avatar>
+
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-1">
+                            <h3 className="font-semibold truncate">{student.fullName}</h3>
+                            {student.rollNumber && (
+                              <Badge variant="outline" className="text-xs shrink-0">
+                                {student.rollNumber}
+                              </Badge>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-3 text-sm text-muted-foreground">
+                            {(student.department || student.section) && (
+                              <span>{formatDepartmentSection(student.department, student.section)}</span>
+                            )}
+                            <span>Quizzes: {student.quizzesTaken}</span>
+                          </div>
+                        </div>
+
+                        <div className="text-right shrink-0">
+                          <p className="text-2xl font-bold">{student.totalScore}</p>
+                          <p className="text-xs text-muted-foreground">points</p>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="department" className="space-y-6">
+          {departments.length === 0 ? (
+            <Card className="border-border/50">
+              <CardContent className="py-12 text-center text-muted-foreground">
+                No department data available.
+              </CardContent>
+            </Card>
           ) : (
-            <div className="space-y-2">
-              {leaderboard.map((student, index) => {
-                const rank = index + 1;
-                const initials = student.fullName
-                  .split(" ")
-                  .map((n: string) => n[0])
-                  .join("")
-                  .toUpperCase()
-                  .slice(0, 2);
-
+            <div className="space-y-8">
+              {departments.map((dept) => {
+                const deptStudents = studentsWithRank
+                  .filter((s) => s.department === dept)
+                  .map((s, i) => ({ ...s, deptRank: i + 1 }));
                 return (
-                  <div
-                    key={student.id}
-                    className={`flex items-center gap-4 p-4 rounded-lg border transition-colors ${getRankBg(
-                      rank
-                    )}`}
-                  >
-                    {/* Rank */}
-                    <div className="flex items-center justify-center w-12 h-12 shrink-0">
-                      {getRankIcon(rank)}
-                    </div>
-
-                    {/* Avatar */}
-                    <Avatar className="h-10 w-10 shrink-0">
-                      <AvatarImage
-                        src={student.avatarUrl || undefined}
-                        alt={student.fullName}
-                      />
-                      <AvatarFallback className="bg-primary/10 text-primary text-sm">
-                        {initials}
-                      </AvatarFallback>
-                    </Avatar>
-
-                    {/* Student Info */}
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1">
-                        <h3 className="font-semibold truncate">
-                          {student.fullName}
-                        </h3>
-                        {student.rollNumber && (
-                          <Badge variant="outline" className="text-xs shrink-0">
-                            {student.rollNumber}
-                          </Badge>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-3 text-sm text-muted-foreground">
-                        {(student.department || student.section) && (
-                          <span>{formatDepartmentSection(student.department, student.section)}</span>
-                        )}
-                        <span>Quizzes: {student.quizzesTaken}</span>
-                      </div>
-                    </div>
-
-                    {/* Score */}
-                    <div className="text-right shrink-0">
-                      <p className="text-2xl font-bold">{student.totalScore}</p>
-                      <p className="text-xs text-muted-foreground">points</p>
-                    </div>
-                  </div>
+                  <Card key={dept} className="border-border/50">
+                    <CardHeader>
+                      <CardTitle>{dept}</CardTitle>
+                      <CardDescription>
+                        Top students in {dept} (showing up to 10)
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-2">
+                      {deptStudents.slice(0, 10).map((student) => (
+                        <div
+                          key={student.id}
+                          className="flex items-center justify-between gap-4 p-3 rounded-lg hover:bg-muted/50"
+                        >
+                          <div className="flex items-center gap-3 min-w-0">
+                            <Badge variant="outline" className="shrink-0">
+                              #{student.deptRank}
+                            </Badge>
+                            <div className="min-w-0">
+                              <p className="font-medium truncate">{student.fullName}</p>
+                              <p className="text-sm text-muted-foreground">
+                                {formatDepartmentSection(student.department, student.section)}
+                              </p>
+                            </div>
+                          </div>
+                          <div className="text-right shrink-0">
+                            <p className="font-bold text-primary">{student.totalScore}</p>
+                            <p className="text-xs text-muted-foreground">points</p>
+                          </div>
+                        </div>
+                      ))}
+                    </CardContent>
+                  </Card>
                 );
               })}
             </div>
           )}
-        </CardContent>
-      </Card>
+        </TabsContent>
+
+        <TabsContent value="section" className="space-y-6">
+          {departmentSectionGroups.length === 0 ? (
+            <Card className="border-border/50">
+              <CardContent className="py-12 text-center text-muted-foreground">
+                No section data available.
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="space-y-8">
+              {departmentSectionGroups.map((key) => {
+                const [dept, sec] = String(key).split("__");
+                const groupStudents = studentsWithRank
+                  .filter((s) => s.department === dept && s.section === sec)
+                  .map((s, i) => ({ ...s, groupRank: i + 1 }));
+
+                return (
+                  <Card key={key} className="border-border/50">
+                    <CardHeader>
+                      <CardTitle>{dept} • Section {sec}</CardTitle>
+                      <CardDescription>
+                        Top students in this section (showing up to 10)
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-2">
+                      {groupStudents.slice(0, 10).map((student) => (
+                        <div
+                          key={student.id}
+                          className="flex items-center justify-between gap-4 p-3 rounded-lg hover:bg-muted/50"
+                        >
+                          <div className="flex items-center gap-3 min-w-0">
+                            <Badge variant="outline" className="shrink-0">
+                              #{student.groupRank}
+                            </Badge>
+                            <div className="min-w-0">
+                              <p className="font-medium truncate">{student.fullName}</p>
+                              <p className="text-sm text-muted-foreground">
+                                {formatDepartmentSection(student.department, student.section)}
+                              </p>
+                            </div>
+                          </div>
+                          <div className="text-right shrink-0">
+                            <p className="font-bold text-primary">{student.totalScore}</p>
+                            <p className="text-xs text-muted-foreground">points</p>
+                          </div>
+                        </div>
+                      ))}
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
+          )}
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

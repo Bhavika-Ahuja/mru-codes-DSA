@@ -3,6 +3,29 @@ import { getProfile } from "@/lib/supabase/server";
 import prisma from "@/lib/prisma";
 import * as XLSX from "xlsx";
 import { Prisma } from "@prisma/client";
+import ExcelJS from "exceljs";
+
+export const runtime = "nodejs";
+
+function toISODate(d: Date) {
+  return d.toISOString().split("T")[0];
+}
+
+function makeFilename({
+  department,
+  section,
+  type,
+}: {
+  department: string | null;
+  section: string | null;
+  type: string;
+}) {
+  const timestamp = new Date().toISOString().split("T")[0];
+  const departmentPart = department && department !== "all" ? `-${department}` : "";
+  const sectionPart = section && section !== "all" ? `-${section}` : "";
+  const typePart = type !== "all" ? `-${type}` : "";
+  return `Performance-Report${departmentPart}${sectionPart}${typePart}-${timestamp}.xlsx`;
+}
 
 // GET /api/analytics/export - Export comprehensive analytics data to Excel
 export async function GET(request: NextRequest) {
@@ -52,14 +75,6 @@ export async function GET(request: NextRequest) {
       worksheet["!cols"] = widths.map((w) => ({ wch: w }));
     };
 
-    // Helper function to add header styling
-    const addHeaderStyle = (worksheet: XLSX.WorkSheet, rowIndex: number, colCount: number) => {
-      if (!worksheet["!rows"]) worksheet["!rows"] = [];
-      if (!worksheet["!rows"][rowIndex]) {
-        worksheet["!rows"][rowIndex] = { hpt: 20, hpx: 20 };
-      }
-    };
-
     // Date range filter
     const dateFilter: Prisma.DateTimeFilter | undefined = 
       dateFrom || dateTo
@@ -68,6 +83,308 @@ export async function GET(request: NextRequest) {
             ...(dateTo ? { lte: new Date(dateTo) } : {}),
           }
         : undefined;
+
+    // ---- New (fast) ExcelJS export path ----
+    // The legacy XLSX implementation below does many per-student DB queries and can hang
+    // for larger datasets. This path uses batched queries + ExcelJS.
+    if ((process.env.EXPORT_ENGINE ?? "exceljs") !== "legacy") {
+      const studentIds = students.map((s) => s.id);
+      const studentById = new Map(students.map((s) => [s.id, s]));
+
+      const needsParticipations =
+        reportType === "all" ||
+        reportType === "performance" ||
+        reportType === "detailed" ||
+        reportType === "quizzes";
+
+      const needsAssignments =
+        reportType === "all" ||
+        reportType === "assignments" ||
+        reportType === "performance" ||
+        reportType === "detailed";
+
+      const [participations, assignmentSubmissions] = await Promise.all([
+        needsParticipations && studentIds.length > 0
+          ? prisma.sessionParticipant.findMany({
+              where: {
+                studentId: { in: studentIds },
+                ...(dateFilter ? { joinedAt: dateFilter } : {}),
+                ...(quizId ? { session: { quizId } } : {}),
+              },
+              include: {
+                session: {
+                  select: {
+                    roomCode: true,
+                    status: true,
+                    startedAt: true,
+                    endedAt: true,
+                    quiz: {
+                      select: {
+                        title: true,
+                        topic: true,
+                        difficulty: true,
+                        totalQuestions: true,
+                      },
+                    },
+                  },
+                },
+              },
+              orderBy: { joinedAt: "desc" },
+            })
+          : Promise.resolve([]),
+        needsAssignments && studentIds.length > 0
+          ? prisma.assignmentSubmission.findMany({
+              where: {
+                studentId: { in: studentIds },
+                ...(dateFilter ? { submittedAt: dateFilter } : {}),
+              },
+              include: {
+                assignment: {
+                  select: {
+                    title: true,
+                    maxPoints: true,
+                    topic: true,
+                    difficulty: true,
+                  },
+                },
+              },
+              orderBy: { submittedAt: "desc" },
+            })
+          : Promise.resolve([]),
+      ]);
+
+      const participationsByStudent = new Map<string, typeof participations>();
+      for (const p of participations) {
+        const arr = participationsByStudent.get(p.studentId) ?? [];
+        arr.push(p);
+        participationsByStudent.set(p.studentId, arr);
+      }
+
+      const assignmentsByStudent = new Map<string, typeof assignmentSubmissions>();
+      for (const a of assignmentSubmissions) {
+        const arr = assignmentsByStudent.get(a.studentId) ?? [];
+        arr.push(a);
+        assignmentsByStudent.set(a.studentId, arr);
+      }
+
+      const workbook = new ExcelJS.Workbook();
+      workbook.creator = "DSA Dashboard";
+      workbook.created = new Date();
+
+      const headerStyle: Partial<ExcelJS.Style> = {
+        font: { bold: true, color: { argb: "FFFFFFFF" } },
+        fill: { type: "pattern", pattern: "solid", fgColor: { argb: "FF7C3AED" } },
+        alignment: { vertical: "middle", horizontal: "center" },
+      };
+
+      const styleHeaderRow = (sheet: ExcelJS.Worksheet) => {
+        const row = sheet.getRow(1);
+        row.height = 20;
+        row.eachCell((cell) => {
+          cell.style = { ...(cell.style || {}), ...headerStyle };
+        });
+      };
+
+      // Summary
+      {
+        const sheet = workbook.addWorksheet("Report Summary");
+        sheet.columns = [
+          { header: "Metric", key: "metric", width: 28 },
+          { header: "Value", key: "value", width: 60 },
+        ];
+        sheet.addRow({ metric: "Report Generated", value: new Date().toLocaleString() });
+        sheet.addRow({ metric: "Generated By", value: profile.fullName });
+        sheet.addRow({ metric: "Total Students", value: students.length });
+        sheet.addRow({
+          metric: "Filter Applied",
+          value:
+            [
+              department && department !== "all" ? `Department: ${department}` : null,
+              section && section !== "all" ? `Section: ${section}` : null,
+            ]
+              .filter(Boolean)
+              .join(" • ") || "All Students",
+        });
+        sheet.addRow({
+          metric: "Date Range",
+          value: dateFrom && dateTo ? `${dateFrom} to ${dateTo}` : "All Time",
+        });
+        sheet.addRow({
+          metric: "Report Type",
+          value: reportType === "all" ? "Comprehensive Report" : reportType,
+        });
+        styleHeaderRow(sheet);
+      }
+
+      // Student Overview + Performance Summary (performance/detailed/all)
+      if (reportType === "all" || reportType === "performance" || reportType === "detailed") {
+        const overview = workbook.addWorksheet("Student Overview");
+        overview.columns = [
+          { header: "Rank", key: "rank", width: 8 },
+          { header: "Student Name", key: "name", width: 24 },
+          { header: "Email", key: "email", width: 30 },
+          { header: "Roll Number", key: "roll", width: 14 },
+          { header: "Department", key: "dept", width: 16 },
+          { header: "Section", key: "sec", width: 10 },
+          { header: "Total Score", key: "totalScore", width: 12 },
+          { header: "Quizzes Taken", key: "quizzesTaken", width: 12 },
+          { header: "Average Score", key: "avgScore", width: 14 },
+          { header: "Performance Grade", key: "grade", width: 18 },
+        ];
+
+        const perf = workbook.addWorksheet("Performance Summary");
+        perf.columns = [
+          { header: "Student Name", key: "name", width: 24 },
+          { header: "Email", key: "email", width: 30 },
+          { header: "Department", key: "dept", width: 16 },
+          { header: "Section", key: "sec", width: 10 },
+          { header: "Total Sessions", key: "sessions", width: 14 },
+          { header: "Avg Score", key: "avgScore", width: 12 },
+          { header: "Avg Accuracy %", key: "avgAcc", width: 14 },
+          { header: "Assignments Submitted", key: "asSub", width: 18 },
+          { header: "Assignments Graded", key: "asGr", width: 16 },
+        ];
+
+        students.forEach((student, idx) => {
+          const ps = participationsByStudent.get(student.id) ?? [];
+          const as = assignmentsByStudent.get(student.id) ?? [];
+
+          const avgScore = ps.length > 0 ? ps.reduce((s, p) => s + p.sessionScore, 0) / ps.length : 0;
+          const avgAcc =
+            ps.length > 0
+              ? ps.reduce((s, p) => s + (p.questionsAnswered > 0 ? (p.correctAnswers / p.questionsAnswered) * 100 : 0), 0) /
+                ps.length
+              : 0;
+
+          const grade =
+            student.totalScore >= 1000
+              ? "Excellent"
+              : student.totalScore >= 500
+              ? "Good"
+              : student.totalScore >= 200
+              ? "Average"
+              : "Needs Improvement";
+
+          overview.addRow({
+            rank: idx + 1,
+            name: student.fullName,
+            email: student.email,
+            roll: student.rollNumber || "-",
+            dept: student.department || "-",
+            sec: student.section || "-",
+            totalScore: student.totalScore,
+            quizzesTaken: student.quizzesTaken,
+            avgScore: Math.round(avgScore * 100) / 100,
+            grade,
+          });
+
+          perf.addRow({
+            name: student.fullName,
+            email: student.email,
+            dept: student.department || "-",
+            sec: student.section || "-",
+            sessions: ps.length,
+            avgScore: Math.round(avgScore * 100) / 100,
+            avgAcc: Math.round(avgAcc * 100) / 100,
+            asSub: as.length,
+            asGr: as.filter((x) => x.grade !== null).length,
+          });
+        });
+
+        styleHeaderRow(overview);
+        styleHeaderRow(perf);
+      }
+
+      // Quiz Participation
+      if (reportType === "all" || reportType === "quizzes" || reportType === "detailed") {
+        const sheet = workbook.addWorksheet("Quiz Participation");
+        sheet.columns = [
+          { header: "Student Name", key: "name", width: 22 },
+          { header: "Email", key: "email", width: 30 },
+          { header: "Department", key: "dept", width: 16 },
+          { header: "Section", key: "sec", width: 10 },
+          { header: "Quiz Title", key: "quiz", width: 28 },
+          { header: "Topic", key: "topic", width: 16 },
+          { header: "Difficulty", key: "difficulty", width: 12 },
+          { header: "Room Code", key: "room", width: 12 },
+          { header: "Score", key: "score", width: 10 },
+          { header: "Accuracy %", key: "acc", width: 12 },
+          { header: "Date Joined", key: "date", width: 12 },
+          { header: "Status", key: "status", width: 12 },
+        ];
+
+        for (const p of participations) {
+          const student = studentById.get(p.studentId);
+          if (!student) continue;
+          const acc = p.questionsAnswered > 0 ? (p.correctAnswers / p.questionsAnswered) * 100 : 0;
+          sheet.addRow({
+            name: student.fullName,
+            email: student.email,
+            dept: student.department || "-",
+            sec: student.section || "-",
+            quiz: p.session.quiz.title,
+            topic: p.session.quiz.topic,
+            difficulty: p.session.quiz.difficulty,
+            room: p.session.roomCode,
+            score: p.sessionScore,
+            acc: Math.round(acc * 100) / 100,
+            date: toISODate(p.joinedAt),
+            status: p.session.status,
+          });
+        }
+
+        styleHeaderRow(sheet);
+      }
+
+      // Assignment Submissions
+      if (reportType === "all" || reportType === "assignments" || reportType === "detailed") {
+        const sheet = workbook.addWorksheet("Assignment Submissions");
+        sheet.columns = [
+          { header: "Student Name", key: "name", width: 22 },
+          { header: "Email", key: "email", width: 30 },
+          { header: "Department", key: "dept", width: 16 },
+          { header: "Section", key: "sec", width: 10 },
+          { header: "Assignment Title", key: "title", width: 30 },
+          { header: "Topic", key: "topic", width: 18 },
+          { header: "Difficulty", key: "difficulty", width: 12 },
+          { header: "Grade", key: "grade", width: 10 },
+          { header: "Max Points", key: "max", width: 12 },
+          { header: "Submitted At", key: "submitted", width: 12 },
+        ];
+
+        for (const a of assignmentSubmissions) {
+          const student = studentById.get(a.studentId);
+          if (!student) continue;
+          sheet.addRow({
+            name: student.fullName,
+            email: student.email,
+            dept: student.department || "-",
+            sec: student.section || "-",
+            title: a.assignment.title,
+            topic: a.assignment.topic || "-",
+            difficulty: a.assignment.difficulty,
+            grade: a.grade !== null ? a.grade : "Pending",
+            max: a.assignment.maxPoints,
+            submitted: toISODate(a.submittedAt),
+          });
+        }
+
+        styleHeaderRow(sheet);
+      }
+
+      const filename = makeFilename({ department, section, type: reportType });
+      const arrayBuffer = (await workbook.xlsx.writeBuffer()) as ArrayBuffer;
+      const excelBuffer = Buffer.from(arrayBuffer);
+
+      return new NextResponse(excelBuffer, {
+        status: 200,
+        headers: {
+          "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+          "Content-Disposition": `attachment; filename="${encodeURIComponent(filename)}"`,
+          "Cache-Control": "no-store",
+        },
+      });
+    }
 
     // 1. Executive Summary Sheet (Always included)
     const summaryData = [
@@ -310,6 +627,7 @@ export async function GET(request: NextRequest) {
         "Student Name": string;
         "Email": string;
         "Roll Number": string;
+        "Department": string;
         "Section": string;
         "Total Sessions": number;
         "Average Score": number;

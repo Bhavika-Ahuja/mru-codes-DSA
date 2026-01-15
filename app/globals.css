@@ -7,6 +7,19 @@
   --color-background: #ffffff;
   --color-foreground: #0f0f0f;
   
+  /* Shadcn/Recharts-compatible HSL tokens (used by charts) */
+  --background: 0 0% 100%;
+  --foreground: 0 0% 6%;
+  --border: 240 6% 90%;
+  --muted-foreground: 240 4% 46%;
+
+  /* Chart palette (shadcn charts) */
+  --chart-1: 262 83% 58%; /* purple */
+  --chart-2: 142 71% 45%; /* green */
+  --chart-3: 217 91% 60%; /* blue */
+  --chart-4: 45 93% 47%;  /* amber */
+  --chart-5: 0 84% 60%;   /* red */
+  
   --color-primary: #7c3aed;
   --color-primary-foreground: #ffffff;
   
@@ -67,6 +80,19 @@
 .dark {
   --color-background: #0a0a0a;
   --color-foreground: #fafafa;
+  
+  /* Shadcn/Recharts-compatible HSL tokens (used by charts) */
+  --background: 0 0% 4%;
+  --foreground: 0 0% 98%;
+  --border: 240 4% 16%;
+  --muted-foreground: 240 5% 65%;
+
+  /* Chart palette (shadcn charts) */
+  --chart-1: 263 80% 70%;
+  --chart-2: 142 70% 55%;
+  --chart-3: 217 90% 70%;
+  --chart-4: 45 90% 60%;
+  --chart-5: 0 85% 65%;
   
   --color-primary: #a78bfa;
   --color-primary-foreground: #0a0a0a;

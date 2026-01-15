@@ -14,9 +14,6 @@ import {
   XAxis,
   YAxis,
   CartesianGrid,
-  Tooltip,
-  Legend,
-  ResponsiveContainer,
   RadarChart,
   PolarGrid,
   PolarAngleAxis,
@@ -24,6 +21,7 @@ import {
   Radar,
 } from "recharts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ChartContainer, ChartLegend, ChartTooltip } from "@/components/ui/chart";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Trophy, TrendingUp, Target, Award } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -207,7 +205,7 @@ export function StudentPerformanceDashboard() {
     <div className="space-y-6">
       {/* Overview Stats with Enhanced Design */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <Card className="border-2 border-amber-500/20 bg-gradient-to-br from-amber-500/5 to-transparent hover:border-amber-500/40 transition-all duration-300 hover:shadow-lg">
+        <Card className="border-2 border-amber-500/20 bg-linear-to-br from-amber-500/5 to-transparent hover:border-amber-500/40 transition-all duration-300 hover:shadow-lg">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium">Total Score</CardTitle>
             <div className="p-2 bg-amber-500/10 rounded-lg">
@@ -215,7 +213,7 @@ export function StudentPerformanceDashboard() {
             </div>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold bg-gradient-to-r from-amber-600 to-amber-400 bg-clip-text text-transparent">
+            <div className="text-3xl font-bold bg-linear-to-r from-amber-600 to-amber-400 bg-clip-text text-transparent">
               {data.overview.totalScore}
             </div>
             <p className="text-xs text-muted-foreground mt-2 flex items-center gap-1">
@@ -225,7 +223,7 @@ export function StudentPerformanceDashboard() {
           </CardContent>
         </Card>
 
-        <Card className="border-2 border-primary/20 bg-gradient-to-br from-primary/5 to-transparent hover:border-primary/40 transition-all duration-300 hover:shadow-lg">
+        <Card className="border-2 border-primary/20 bg-linear-to-br from-primary/5 to-transparent hover:border-primary/40 transition-all duration-300 hover:shadow-lg">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium">Avg Score</CardTitle>
             <div className="p-2 bg-primary/10 rounded-lg">
@@ -233,14 +231,14 @@ export function StudentPerformanceDashboard() {
             </div>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent">
+            <div className="text-3xl font-bold bg-linear-to-r from-primary to-primary/70 bg-clip-text text-transparent">
               {data.overview.avgScore.toFixed(1)}
             </div>
             <p className="text-xs text-muted-foreground mt-2">Per session</p>
           </CardContent>
         </Card>
 
-        <Card className="border-2 border-green-500/20 bg-gradient-to-br from-green-500/5 to-transparent hover:border-green-500/40 transition-all duration-300 hover:shadow-lg">
+        <Card className="border-2 border-green-500/20 bg-linear-to-br from-green-500/5 to-transparent hover:border-green-500/40 transition-all duration-300 hover:shadow-lg">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium">Avg Accuracy</CardTitle>
             <div className="p-2 bg-green-500/10 rounded-lg">
@@ -248,14 +246,14 @@ export function StudentPerformanceDashboard() {
             </div>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold bg-gradient-to-r from-green-600 to-green-400 bg-clip-text text-transparent">
+            <div className="text-3xl font-bold bg-linear-to-r from-green-600 to-green-400 bg-clip-text text-transparent">
               {data.overview.avgAccuracy.toFixed(1)}%
             </div>
             <p className="text-xs text-muted-foreground mt-2">Across all quizzes</p>
           </CardContent>
         </Card>
 
-        <Card className="border-2 border-blue-500/20 bg-gradient-to-br from-blue-500/5 to-transparent hover:border-blue-500/40 transition-all duration-300 hover:shadow-lg">
+        <Card className="border-2 border-blue-500/20 bg-linear-to-br from-blue-500/5 to-transparent hover:border-blue-500/40 transition-all duration-300 hover:shadow-lg">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium">
               {data.overview.sectionRank ? "Section Rank" : "Quizzes Taken"}
@@ -267,7 +265,7 @@ export function StudentPerformanceDashboard() {
           <CardContent>
             {data.overview.sectionRank ? (
               <>
-                <div className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-blue-400 bg-clip-text text-transparent">
+                <div className="text-3xl font-bold bg-linear-to-r from-blue-600 to-blue-400 bg-clip-text text-transparent">
                   #{data.overview.sectionRank.rank}
                 </div>
                 <p className="text-xs text-muted-foreground mt-2">
@@ -276,7 +274,7 @@ export function StudentPerformanceDashboard() {
               </>
             ) : (
               <>
-                <div className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-blue-400 bg-clip-text text-transparent">
+                <div className="text-3xl font-bold bg-linear-to-r from-blue-600 to-blue-400 bg-clip-text text-transparent">
                   {data.overview.quizzesTaken}
                 </div>
                 <p className="text-xs text-muted-foreground mt-2">Total sessions</p>
@@ -307,7 +305,7 @@ export function StudentPerformanceDashboard() {
                 </p>
               </CardHeader>
               <CardContent>
-                <ResponsiveContainer width="100%" height={450}>
+                <ChartContainer className="h-[450px]">
                   <AreaChart data={performanceOverTime} margin={{ top: 20, right: 30, left: 20, bottom: 20 }}>
                     <defs>
                       <linearGradient id="scoreAreaGradient" x1="0" y1="0" x2="0" y2="1">
@@ -347,8 +345,8 @@ export function StudentPerformanceDashboard() {
                       domain={[0, 100]}
                       label={{ value: "Accuracy %", angle: 90, position: "insideRight", style: { fontSize: "12px", fill: "hsl(var(--foreground))" } }}
                     />
-                    <Tooltip content={<CustomTooltip />} />
-                    <Legend 
+                    <ChartTooltip content={<CustomTooltip />} />
+                    <ChartLegend 
                       wrapperStyle={{ fontSize: "13px", fontWeight: 500, paddingTop: "20px", color: "hsl(var(--foreground))" }}
                       iconType="line"
                     />
@@ -377,7 +375,7 @@ export function StudentPerformanceDashboard() {
                       activeDot={{ r: 7, strokeWidth: 2, stroke: "#fff" }}
                     />
                   </AreaChart>
-                </ResponsiveContainer>
+                </ChartContainer>
               </CardContent>
             </Card>
           ) : (
@@ -409,7 +407,7 @@ export function StudentPerformanceDashboard() {
                   </p>
                 </CardHeader>
                 <CardContent>
-                  <ResponsiveContainer width="100%" height={350}>
+                  <ChartContainer className="h-[350px]">
                     <BarChart data={topicPerformanceData} margin={{ top: 20, right: 30, left: 20, bottom: 80 }}>
                       <defs>
                         <linearGradient id="topicAccuracyGradient" x1="0" y1="0" x2="0" y2="1">
@@ -437,7 +435,7 @@ export function StudentPerformanceDashboard() {
                         tickLine={{ stroke: "hsl(var(--foreground))" }}
                         label={{ value: "Accuracy %", angle: -90, position: "insideLeft", style: { fontSize: "12px", fill: "hsl(var(--foreground))" } }}
                       />
-                      <Tooltip content={<CustomTooltip />} />
+                      <ChartTooltip content={<CustomTooltip />} />
                       <Bar 
                         dataKey="accuracy" 
                         fill={`url(#topicAccuracyGradient)`}
@@ -447,7 +445,7 @@ export function StudentPerformanceDashboard() {
                         animationBegin={0}
                       />
                     </BarChart>
-                  </ResponsiveContainer>
+                  </ChartContainer>
                 </CardContent>
               </Card>
 
@@ -462,7 +460,7 @@ export function StudentPerformanceDashboard() {
                   </p>
                 </CardHeader>
                 <CardContent>
-                  <ResponsiveContainer width="100%" height={350}>
+                  <ChartContainer className="h-[350px]">
                     <PieChart>
                       <Pie
                         data={topicPerformanceData}
@@ -498,7 +496,7 @@ export function StudentPerformanceDashboard() {
                           />
                         ))}
                       </Pie>
-                      <Tooltip 
+                      <ChartTooltip
                         content={<CustomTooltip />}
                         formatter={(value: number, name: string) => {
                           if (name === "total") {
@@ -508,12 +506,12 @@ export function StudentPerformanceDashboard() {
                           return [value, name];
                         }}
                       />
-                      <Legend 
+                      <ChartLegend
                         wrapperStyle={{ fontSize: "13px", fontWeight: 500, paddingTop: "20px", color: "hsl(var(--foreground))" }}
                         iconType="circle"
                       />
                     </PieChart>
-                  </ResponsiveContainer>
+                  </ChartContainer>
                 </CardContent>
               </Card>
             </div>
@@ -546,7 +544,7 @@ export function StudentPerformanceDashboard() {
                   </p>
                 </CardHeader>
                 <CardContent>
-                  <ResponsiveContainer width="100%" height={350}>
+                  <ChartContainer className="h-[350px]">
                     <BarChart data={difficultyPerformanceData} margin={{ top: 20, right: 30, left: 20, bottom: 20 }}>
                       <defs>
                         <linearGradient id="difficultyAccuracyGradient" x1="0" y1="0" x2="0" y2="1">
@@ -571,7 +569,7 @@ export function StudentPerformanceDashboard() {
                         tickLine={{ stroke: "hsl(var(--foreground))" }}
                         label={{ value: "Accuracy %", angle: -90, position: "insideLeft", style: { fontSize: "12px", fill: "hsl(var(--foreground))" } }}
                       />
-                      <Tooltip content={<CustomTooltip />} />
+                      <ChartTooltip content={<CustomTooltip />} />
                       <Bar 
                         dataKey="accuracy" 
                         fill={`url(#difficultyAccuracyGradient)`}
@@ -581,7 +579,7 @@ export function StudentPerformanceDashboard() {
                         animationBegin={0}
                       />
                     </BarChart>
-                  </ResponsiveContainer>
+                  </ChartContainer>
                 </CardContent>
               </Card>
 
@@ -596,7 +594,7 @@ export function StudentPerformanceDashboard() {
                   </p>
                 </CardHeader>
                 <CardContent>
-                  <ResponsiveContainer width="100%" height={350}>
+                  <ChartContainer className="h-[350px]">
                     <PieChart>
                       <Pie
                         data={difficultyPerformanceData}
@@ -632,7 +630,7 @@ export function StudentPerformanceDashboard() {
                           />
                         ))}
                       </Pie>
-                      <Tooltip 
+                      <ChartTooltip
                         content={<CustomTooltip />}
                         formatter={(value: number, name: string) => {
                           if (name === "total") {
@@ -642,12 +640,12 @@ export function StudentPerformanceDashboard() {
                           return [value, name];
                         }}
                       />
-                      <Legend 
+                      <ChartLegend
                         wrapperStyle={{ fontSize: "13px", fontWeight: 500, paddingTop: "20px" }}
                         iconType="circle"
                       />
                     </PieChart>
-                  </ResponsiveContainer>
+                  </ChartContainer>
                 </CardContent>
               </Card>
             </div>

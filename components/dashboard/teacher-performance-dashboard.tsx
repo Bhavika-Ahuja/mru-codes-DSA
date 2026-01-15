@@ -12,11 +12,9 @@ import {
   XAxis,
   YAxis,
   CartesianGrid,
-  Tooltip,
-  Legend,
-  ResponsiveContainer,
 } from "recharts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ChartContainer, ChartLegend, ChartTooltip } from "@/components/ui/chart";
 import {
   Select,
   SelectContent,
@@ -35,6 +33,7 @@ interface Student {
   fullName: string;
   email: string;
   rollNumber: string | null;
+  department: string | null;
   section: string | null;
   avatarUrl: string | null;
   totalScore: number;
@@ -65,6 +64,7 @@ interface Student {
 
 interface AnalyticsData {
   students: Student[];
+  departments: string[];
   sections: string[];
   sectionStats: Array<{
     section: string;
@@ -141,6 +141,7 @@ const CustomTooltip = ({ active, payload, label }: CustomTooltipProps) => {
 export function TeacherPerformanceDashboard() {
   const [data, setData] = useState<AnalyticsData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [selectedDepartment, setSelectedDepartment] = useState<string>("all");
   const [selectedSection, setSelectedSection] = useState<string>("all");
   const [selectedStudent, setSelectedStudent] = useState<string>("all");
 
@@ -148,6 +149,9 @@ export function TeacherPerformanceDashboard() {
     setLoading(true);
     try {
       const params = new URLSearchParams();
+      if (selectedDepartment !== "all") {
+        params.append("department", selectedDepartment);
+      }
       if (selectedSection !== "all") {
         params.append("section", selectedSection);
       }
@@ -156,28 +160,58 @@ export function TeacherPerformanceDashboard() {
       }
 
       const response = await fetch(`/api/analytics/teacher?${params.toString()}`);
-      const data = await response.json();
-
-      if (response.ok && data.success) {
-        setData(data);
-      } else {
-        toast.error(data.error || "Failed to load analytics");
+      let payload: unknown = null;
+      try {
+        payload = await response.json();
+      } catch {
+        payload = null;
       }
+
+      if (!response.ok) {
+        const errorMessage =
+          typeof payload === "object" && payload !== null && "error" in payload
+            ? String((payload as { error?: unknown }).error || "Failed to load analytics")
+            : `Failed to load analytics (${response.status})`;
+        toast.error(errorMessage);
+        return;
+      }
+
+      const maybeData = payload as Partial<AnalyticsData> | null;
+      if (!maybeData || !Array.isArray(maybeData.students)) {
+        toast.error("Failed to load analytics");
+        return;
+      }
+
+      setData(maybeData as AnalyticsData);
     } catch (error) {
       console.error("Error fetching analytics:", error);
       toast.error("Failed to load analytics");
     } finally {
       setLoading(false);
     }
-  }, [selectedSection, selectedStudent]);
+  }, [selectedDepartment, selectedSection, selectedStudent]);
 
   useEffect(() => {
     fetchAnalytics();
   }, [fetchAnalytics]);
 
+  // Reset dependent filters when higher-level filter changes
+  useEffect(() => {
+    setSelectedSection("all");
+    setSelectedStudent("all");
+  }, [selectedDepartment]);
+
+  useEffect(() => {
+    setSelectedStudent("all");
+  }, [selectedSection]);
+
   const handleExport = async (type: string = "all") => {
+    let loadingToastId: string | undefined;
     try {
       const params = new URLSearchParams();
+      if (selectedDepartment !== "all") {
+        params.append("department", selectedDepartment);
+      }
       if (selectedSection !== "all") {
         params.append("section", selectedSection);
       }
@@ -187,7 +221,7 @@ export function TeacherPerformanceDashboard() {
       params.append("type", type);
 
       // Show loading toast
-      const loadingToast = toast.loading("Generating Excel report...");
+      loadingToastId = toast.loading("Generating Excel report...");
 
       const response = await fetch(`/api/analytics/export?${params.toString()}`);
       if (!response.ok) {
@@ -201,8 +235,9 @@ export function TeacherPerformanceDashboard() {
       a.href = url;
 
       const timestamp = new Date().toISOString().split("T")[0];
+      const departmentPart = selectedDepartment !== "all" ? `-${selectedDepartment}` : "";
       const sectionPart = selectedSection !== "all" ? `-${selectedSection}` : "";
-      const filename = `Performance-Report${sectionPart}-${type}-${timestamp}.xlsx`;
+      const filename = `Performance-Report${departmentPart}${sectionPart}-${type}-${timestamp}.xlsx`;
       a.download = filename;
 
       document.body.appendChild(a);
@@ -210,10 +245,10 @@ export function TeacherPerformanceDashboard() {
       window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
 
-      toast.success(`Excel report downloaded successfully!`, { id: loadingToast });
+      toast.success(`Excel report downloaded successfully!`, { id: loadingToastId });
     } catch (error) {
       console.error("Error exporting data:", error);
-      toast.dismiss(loadingToast);
+      if (loadingToastId) toast.dismiss(loadingToastId);
       toast.error(
         error instanceof Error ? error.message : "Failed to export data. Please try again."
       );
@@ -245,6 +280,91 @@ export function TeacherPerformanceDashboard() {
   const selectedStudentData = selectedStudent !== "all"
     ? students.find((s) => s.id === selectedStudent)
     : null;
+
+  // Department-level aggregates (computed client-side)
+  const departmentPerformance = Object.values(
+    students.reduce(
+      (acc, s) => {
+        const dept = (s.department || "Unknown").trim() || "Unknown";
+        if (!acc[dept]) {
+          acc[dept] = { department: dept, totalStudents: 0, scoreSum: 0, accSum: 0, sessionsSum: 0 };
+        }
+        acc[dept].totalStudents += 1;
+        acc[dept].scoreSum += s.metrics.avgScore;
+        acc[dept].accSum += s.metrics.avgAccuracy;
+        acc[dept].sessionsSum += s.metrics.totalSessions;
+        return acc;
+      },
+      {} as Record<
+        string,
+        {
+          department: string;
+          totalStudents: number;
+          scoreSum: number;
+          accSum: number;
+          sessionsSum: number;
+        }
+      >
+    )
+  )
+    .map((d) => ({
+      department: d.department,
+      students: d.totalStudents,
+      avgScore: d.totalStudents > 0 ? Math.round((d.scoreSum / d.totalStudents) * 100) / 100 : 0,
+      avgAccuracy: d.totalStudents > 0 ? Math.round((d.accSum / d.totalStudents) * 100) / 100 : 0,
+      totalSessions: d.sessionsSum,
+    }))
+    .sort((a, b) => b.avgScore - a.avgScore);
+
+  // Distributions (bucketed for readability)
+  const scoreDistribution = (() => {
+    const buckets = [
+      { label: "0-20", min: 0, max: 20 },
+      { label: "20-40", min: 20, max: 40 },
+      { label: "40-60", min: 40, max: 60 },
+      { label: "60-80", min: 60, max: 80 },
+      { label: "80-100", min: 80, max: 100 },
+    ];
+    const counts = buckets.map((b) => ({ range: b.label, students: 0 }));
+    for (const s of students) {
+      const v = s.metrics.avgScore;
+      const idx = Math.min(
+        buckets.length - 1,
+        Math.max(0, Math.floor(v / 20))
+      );
+      counts[idx].students += 1;
+    }
+    return counts;
+  })();
+
+  const accuracyDistribution = (() => {
+    const buckets = [
+      { label: "0-50%", min: 0, max: 50 },
+      { label: "50-60%", min: 50, max: 60 },
+      { label: "60-70%", min: 60, max: 70 },
+      { label: "70-80%", min: 70, max: 80 },
+      { label: "80-90%", min: 80, max: 90 },
+      { label: "90-100%", min: 90, max: 100 },
+    ];
+    const counts = buckets.map((b) => ({ range: b.label, students: 0 }));
+    for (const s of students) {
+      const v = s.metrics.avgAccuracy;
+      const idx =
+        v < 50
+          ? 0
+          : v < 60
+          ? 1
+          : v < 70
+          ? 2
+          : v < 80
+          ? 3
+          : v < 90
+          ? 4
+          : 5;
+      counts[idx].students += 1;
+    }
+    return counts;
+  })();
 
   // Prepare data for charts
   const sectionPerformance = data.sectionStats.map((stat) => ({
@@ -326,6 +446,20 @@ export function TeacherPerformanceDashboard() {
       {/* Filters and Export */}
       <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
         <div className="flex gap-4 flex-wrap">
+          <Select value={selectedDepartment} onValueChange={setSelectedDepartment}>
+            <SelectTrigger className="w-[200px]">
+              <SelectValue placeholder="All Departments" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Departments</SelectItem>
+              {(data.departments || []).map((department) => (
+                <SelectItem key={department} value={department}>
+                  {department}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
           <Select value={selectedSection} onValueChange={setSelectedSection}>
             <SelectTrigger className="w-[200px]">
               <SelectValue placeholder="All Sections" />
@@ -478,7 +612,9 @@ export function TeacherPerformanceDashboard() {
       <Tabs defaultValue="overview" className="space-y-4">
         <TabsList>
           <TabsTrigger value="overview">Overview</TabsTrigger>
+          <TabsTrigger value="departments">Departments</TabsTrigger>
           <TabsTrigger value="sections">Sections</TabsTrigger>
+          <TabsTrigger value="distributions">Distributions</TabsTrigger>
           <TabsTrigger value="topics">Topics</TabsTrigger>
           <TabsTrigger value="difficulty">Difficulty</TabsTrigger>
           {selectedStudentData && <TabsTrigger value="student">Student Detail</TabsTrigger>}
@@ -497,7 +633,7 @@ export function TeacherPerformanceDashboard() {
                 </p>
               </CardHeader>
               <CardContent>
-                <ResponsiveContainer width="100%" height={350}>
+                <ChartContainer className="h-[350px]">
                   <BarChart data={topStudents} margin={{ top: 20, right: 30, left: 20, bottom: 20 }}>
                     <defs>
                       <linearGradient id="scoreGradient" x1="0" y1="0" x2="0" y2="1">
@@ -521,7 +657,7 @@ export function TeacherPerformanceDashboard() {
                       tickLine={{ stroke: "hsl(var(--foreground))" }}
                       label={{ value: "Total Score", angle: -90, position: "insideLeft", style: { fontSize: "12px", fill: "hsl(var(--foreground))" } }}
                     />
-                    <Tooltip content={<CustomTooltip />} />
+                    <ChartTooltip content={<CustomTooltip />} />
                     <Bar
                       dataKey="score"
                       fill={`url(#scoreGradient)`}
@@ -531,7 +667,7 @@ export function TeacherPerformanceDashboard() {
                       animationBegin={0}
                     />
                   </BarChart>
-                </ResponsiveContainer>
+                </ChartContainer>
               </CardContent>
             </Card>
 
@@ -546,7 +682,7 @@ export function TeacherPerformanceDashboard() {
                 </p>
               </CardHeader>
               <CardContent>
-                <ResponsiveContainer width="100%" height={350}>
+                <ChartContainer className="h-[350px]">
                   <BarChart data={topStudents} margin={{ top: 20, right: 30, left: 20, bottom: 20 }}>
                     <defs>
                       <linearGradient id="accuracyGradient" x1="0" y1="0" x2="0" y2="1">
@@ -571,7 +707,7 @@ export function TeacherPerformanceDashboard() {
                       tickLine={{ stroke: "hsl(var(--foreground))" }}
                       label={{ value: "Accuracy %", angle: -90, position: "insideLeft", style: { fontSize: "12px", fill: "hsl(var(--foreground))" } }}
                     />
-                    <Tooltip content={<CustomTooltip />} />
+                    <ChartTooltip content={<CustomTooltip />} />
                     <Bar
                       dataKey="accuracy"
                       fill={`url(#accuracyGradient)`}
@@ -581,10 +717,93 @@ export function TeacherPerformanceDashboard() {
                       animationBegin={0}
                     />
                   </BarChart>
-                </ResponsiveContainer>
+                </ChartContainer>
               </CardContent>
             </Card>
           </div>
+        </TabsContent>
+
+        <TabsContent value="departments" className="space-y-4">
+          {departmentPerformance.length > 0 ? (
+            <div className="grid gap-6 md:grid-cols-2">
+              <Card className="border-2 border-primary/10 hover:border-primary/20 transition-all duration-300">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-lg font-bold flex items-center gap-2">
+                    <Users className="h-5 w-5 text-primary" />
+                    Department Performance
+                  </CardTitle>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Compare average score and accuracy across departments
+                  </p>
+                </CardHeader>
+                <CardContent>
+                  <ChartContainer className="h-[350px]">
+                    <BarChart data={departmentPerformance} margin={{ top: 20, right: 30, left: 20, bottom: 20 }}>
+                      <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
+                      <XAxis dataKey="department" tickLine={false} axisLine={false} />
+                      <YAxis tickLine={false} axisLine={false} />
+                      <ChartTooltip content={<CustomTooltip />} />
+                      <ChartLegend iconType="circle" />
+                      <Bar dataKey="avgScore" fill="hsl(var(--chart-1))" name="Avg Score" radius={[10, 10, 0, 0]} />
+                      <Bar dataKey="avgAccuracy" fill="hsl(var(--chart-2))" name="Avg Accuracy %" radius={[10, 10, 0, 0]} />
+                    </BarChart>
+                  </ChartContainer>
+                </CardContent>
+              </Card>
+
+              <Card className="border-2 border-primary/10 hover:border-primary/20 transition-all duration-300">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-lg font-bold flex items-center gap-2">
+                    <Users className="h-5 w-5 text-primary" />
+                    Students by Department
+                  </CardTitle>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Student distribution across departments
+                  </p>
+                </CardHeader>
+                <CardContent>
+                  <ChartContainer className="h-[350px]">
+                    <PieChart>
+                      <Pie
+                        data={departmentPerformance}
+                        cx="50%"
+                        cy="50%"
+                        dataKey="students"
+                        nameKey="department"
+                        outerRadius={120}
+                        innerRadius={40}
+                        paddingAngle={2}
+                        label={(p: { name?: string; percent?: number }) =>
+                          `${p.name ?? ""} ${(p.percent ? p.percent * 100 : 0).toFixed(0)}%`
+                        }
+                      >
+                        {departmentPerformance.map((_, index) => (
+                          <Cell
+                            key={`dept-cell-${index}`}
+                            fill={COLORS[index % COLORS.length]}
+                            stroke="hsl(var(--background))"
+                            strokeWidth={2}
+                          />
+                        ))}
+                      </Pie>
+                      <ChartTooltip content={<CustomTooltip />} />
+                      <ChartLegend iconType="circle" />
+                    </PieChart>
+                  </ChartContainer>
+                </CardContent>
+              </Card>
+            </div>
+          ) : (
+            <Card className="border-2 border-dashed">
+              <CardContent className="py-16 text-center">
+                <Users className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+                <p className="text-lg font-medium text-foreground mb-2">No department data available</p>
+                <p className="text-sm text-muted-foreground">
+                  Department stats will appear once students have departments set
+                </p>
+              </CardContent>
+            </Card>
+          )}
         </TabsContent>
 
         <TabsContent value="sections" className="space-y-4">
@@ -601,7 +820,7 @@ export function TeacherPerformanceDashboard() {
                   </p>
                 </CardHeader>
                 <CardContent>
-                  <ResponsiveContainer width="100%" height={350}>
+                  <ChartContainer className="h-[350px]">
                     <BarChart data={sectionPerformance} margin={{ top: 20, right: 30, left: 20, bottom: 20 }}>
                       <defs>
                         <linearGradient id="sectionScoreGradient" x1="0" y1="0" x2="0" y2="1">
@@ -630,8 +849,8 @@ export function TeacherPerformanceDashboard() {
                         tickLine={{ stroke: "hsl(var(--foreground))" }}
                         label={{ value: "Score / Accuracy", angle: -90, position: "insideLeft", style: { fontSize: "12px", fill: "hsl(var(--foreground))" } }}
                       />
-                      <Tooltip content={<CustomTooltip />} />
-                      <Legend
+                      <ChartTooltip content={<CustomTooltip />} />
+                      <ChartLegend
                         wrapperStyle={{ fontSize: "13px", fontWeight: 500, paddingTop: "20px", color: "hsl(var(--foreground))" }}
                         iconType="circle"
                       />
@@ -652,7 +871,7 @@ export function TeacherPerformanceDashboard() {
                         animationBegin={200}
                       />
                     </BarChart>
-                  </ResponsiveContainer>
+                  </ChartContainer>
                 </CardContent>
               </Card>
 
@@ -667,7 +886,7 @@ export function TeacherPerformanceDashboard() {
                   </p>
                 </CardHeader>
                 <CardContent>
-                  <ResponsiveContainer width="100%" height={350}>
+                  <ChartContainer className="h-[350px]">
                     <PieChart>
                       <Pie
                         data={sectionPerformance}
@@ -696,7 +915,7 @@ export function TeacherPerformanceDashboard() {
                           />
                         ))}
                       </Pie>
-                      <Tooltip
+                      <ChartTooltip
                         content={<CustomTooltip />}
                         formatter={(value: number, name: string) => {
                           if (name === "students") {
@@ -706,12 +925,12 @@ export function TeacherPerformanceDashboard() {
                           return [value, name];
                         }}
                       />
-                      <Legend
+                      <ChartLegend
                         wrapperStyle={{ fontSize: "13px", fontWeight: 500, paddingTop: "20px", color: "hsl(var(--foreground))" }}
                         iconType="circle"
                       />
                     </PieChart>
-                  </ResponsiveContainer>
+                  </ChartContainer>
                 </CardContent>
               </Card>
             </div>
@@ -730,6 +949,56 @@ export function TeacherPerformanceDashboard() {
           )}
         </TabsContent>
 
+        <TabsContent value="distributions" className="space-y-4">
+          <div className="grid gap-6 md:grid-cols-2">
+            <Card className="border-2 border-primary/10 hover:border-primary/20 transition-all duration-300">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-lg font-bold flex items-center gap-2">
+                  <BarChart3 className="h-5 w-5 text-primary" />
+                  Avg Score Distribution
+                </CardTitle>
+                <p className="text-sm text-muted-foreground mt-1">
+                  How many students fall into each average score band
+                </p>
+              </CardHeader>
+              <CardContent>
+                <ChartContainer className="h-[320px]">
+                  <BarChart data={scoreDistribution} margin={{ top: 20, right: 20, left: 10, bottom: 20 }}>
+                    <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
+                    <XAxis dataKey="range" tickLine={false} axisLine={false} />
+                    <YAxis allowDecimals={false} tickLine={false} axisLine={false} />
+                    <ChartTooltip content={<CustomTooltip />} />
+                    <Bar dataKey="students" name="Students" fill="hsl(var(--chart-3))" radius={[10, 10, 0, 0]} />
+                  </BarChart>
+                </ChartContainer>
+              </CardContent>
+            </Card>
+
+            <Card className="border-2 border-primary/10 hover:border-primary/20 transition-all duration-300">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-lg font-bold flex items-center gap-2">
+                  <Award className="h-5 w-5 text-green-500" />
+                  Accuracy Distribution
+                </CardTitle>
+                <p className="text-sm text-muted-foreground mt-1">
+                  How many students fall into each accuracy band
+                </p>
+              </CardHeader>
+              <CardContent>
+                <ChartContainer className="h-[320px]">
+                  <BarChart data={accuracyDistribution} margin={{ top: 20, right: 20, left: 10, bottom: 20 }}>
+                    <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
+                    <XAxis dataKey="range" tickLine={false} axisLine={false} />
+                    <YAxis allowDecimals={false} tickLine={false} axisLine={false} />
+                    <ChartTooltip content={<CustomTooltip />} />
+                    <Bar dataKey="students" name="Students" fill="hsl(var(--chart-2))" radius={[10, 10, 0, 0]} />
+                  </BarChart>
+                </ChartContainer>
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
+
         <TabsContent value="topics" className="space-y-4">
           {topicPerformanceData.length > 0 ? (
             <Card className="border-2 border-warning/10 hover:border-warning/20 transition-all duration-300">
@@ -743,7 +1012,7 @@ export function TeacherPerformanceDashboard() {
                 </p>
               </CardHeader>
               <CardContent>
-                <ResponsiveContainer width="100%" height={450}>
+                <ChartContainer className="h-[450px]">
                   <BarChart data={topicPerformanceData} margin={{ top: 20, right: 30, left: 20, bottom: 80 }}>
                     <defs>
                       <linearGradient id="topicGradient" x1="0" y1="0" x2="0" y2="1">
@@ -771,7 +1040,7 @@ export function TeacherPerformanceDashboard() {
                       tickLine={{ stroke: "hsl(var(--foreground))" }}
                       label={{ value: "Accuracy %", angle: -90, position: "insideLeft", style: { fontSize: "12px", fill: "hsl(var(--foreground))" } }}
                     />
-                    <Tooltip content={<CustomTooltip />} />
+                    <ChartTooltip content={<CustomTooltip />} />
                     <Bar
                       dataKey="accuracy"
                       fill={`url(#topicGradient)`}
@@ -781,7 +1050,7 @@ export function TeacherPerformanceDashboard() {
                       animationBegin={0}
                     />
                   </BarChart>
-                </ResponsiveContainer>
+                </ChartContainer>
               </CardContent>
             </Card>
           ) : (
@@ -813,7 +1082,7 @@ export function TeacherPerformanceDashboard() {
                   </p>
                 </CardHeader>
                 <CardContent>
-                  <ResponsiveContainer width="100%" height={350}>
+                  <ChartContainer className="h-[350px]">
                     <BarChart data={difficultyPerformanceData} margin={{ top: 20, right: 30, left: 20, bottom: 20 }}>
                       <defs>
                         <linearGradient id="difficultyGradient" x1="0" y1="0" x2="0" y2="1">
@@ -838,7 +1107,7 @@ export function TeacherPerformanceDashboard() {
                         tickLine={{ stroke: "hsl(var(--foreground))" }}
                         label={{ value: "Accuracy %", angle: -90, position: "insideLeft", style: { fontSize: "12px", fill: "hsl(var(--foreground))" } }}
                       />
-                      <Tooltip content={<CustomTooltip />} />
+                      <ChartTooltip content={<CustomTooltip />} />
                       <Bar
                         dataKey="accuracy"
                         fill={`url(#difficultyGradient)`}
@@ -848,7 +1117,7 @@ export function TeacherPerformanceDashboard() {
                         animationBegin={0}
                       />
                     </BarChart>
-                  </ResponsiveContainer>
+                  </ChartContainer>
                 </CardContent>
               </Card>
 
@@ -863,7 +1132,7 @@ export function TeacherPerformanceDashboard() {
                   </p>
                 </CardHeader>
                 <CardContent>
-                  <ResponsiveContainer width="100%" height={350}>
+                  <ChartContainer className="h-[350px]">
                     <PieChart>
                       <Pie
                         data={difficultyPerformanceData}
@@ -892,7 +1161,7 @@ export function TeacherPerformanceDashboard() {
                           />
                         ))}
                       </Pie>
-                      <Tooltip
+                      <ChartTooltip
                         content={<CustomTooltip />}
                         formatter={(value: number, name: string) => {
                           if (name === "total") {
@@ -902,12 +1171,12 @@ export function TeacherPerformanceDashboard() {
                           return [value, name];
                         }}
                       />
-                      <Legend
+                      <ChartLegend
                         wrapperStyle={{ fontSize: "13px", fontWeight: 500, paddingTop: "20px", color: "hsl(var(--foreground))" }}
                         iconType="circle"
                       />
                     </PieChart>
-                  </ResponsiveContainer>
+                  </ChartContainer>
                 </CardContent>
               </Card>
             </div>
@@ -969,7 +1238,7 @@ export function TeacherPerformanceDashboard() {
                 </CardHeader>
                 <CardContent>
                   {performanceOverTime.length > 0 ? (
-                    <ResponsiveContainer width="100%" height={350}>
+                    <ChartContainer className="h-[350px]">
                       <AreaChart data={performanceOverTime} margin={{ top: 20, right: 30, left: 20, bottom: 20 }}>
                         <defs>
                           <linearGradient id="studentScoreAreaGradient" x1="0" y1="0" x2="0" y2="1">
@@ -998,8 +1267,8 @@ export function TeacherPerformanceDashboard() {
                           tickLine={{ stroke: "hsl(var(--foreground))" }}
                           label={{ value: "Score / Accuracy", angle: -90, position: "insideLeft", style: { fontSize: "12px", fill: "hsl(var(--foreground))" } }}
                         />
-                        <Tooltip content={<CustomTooltip />} />
-                        <Legend
+                        <ChartTooltip content={<CustomTooltip />} />
+                        <ChartLegend
                           wrapperStyle={{ fontSize: "13px", fontWeight: 500, paddingTop: "20px", color: "hsl(var(--foreground))" }}
                           iconType="line"
                         />
@@ -1026,7 +1295,7 @@ export function TeacherPerformanceDashboard() {
                           activeDot={{ r: 7, strokeWidth: 2, stroke: "#fff" }}
                         />
                       </AreaChart>
-                    </ResponsiveContainer>
+                    </ChartContainer>
                   ) : (
                     <div className="py-16 text-center text-muted-foreground">
                       <TrendingUp className="h-12 w-12 mx-auto mb-4 opacity-50" />
@@ -1048,7 +1317,7 @@ export function TeacherPerformanceDashboard() {
                 </CardHeader>
                 <CardContent>
                   {Object.entries(selectedStudentData.metrics.topicPerformance).length > 0 ? (
-                    <ResponsiveContainer width="100%" height={350}>
+                    <ChartContainer className="h-[350px]">
                       <BarChart
                         data={Object.entries(selectedStudentData.metrics.topicPerformance).map(
                           ([topic, perf]) => ({
@@ -1083,7 +1352,7 @@ export function TeacherPerformanceDashboard() {
                           tickLine={{ stroke: "hsl(var(--muted-foreground))" }}
                           label={{ value: "Accuracy %", angle: -90, position: "insideLeft", style: { fontSize: "12px" } }}
                         />
-                        <Tooltip content={<CustomTooltip />} />
+                        <ChartTooltip content={<CustomTooltip />} />
                         <Bar
                           dataKey="accuracy"
                           fill={`url(#studentTopicGradient)`}
@@ -1093,7 +1362,7 @@ export function TeacherPerformanceDashboard() {
                           animationBegin={0}
                         />
                       </BarChart>
-                    </ResponsiveContainer>
+                    </ChartContainer>
                   ) : (
                     <div className="py-16 text-center text-muted-foreground">
                       <Target className="h-12 w-12 mx-auto mb-4 opacity-50" />

@@ -13,6 +13,7 @@ export async function GET(request: NextRequest) {
     }
 
     const searchParams = request.nextUrl.searchParams;
+    const department = searchParams.get("department");
     const section = searchParams.get("section");
     const studentId = searchParams.get("studentId");
 
@@ -20,6 +21,10 @@ export async function GET(request: NextRequest) {
     const studentsQuery: Prisma.ProfileWhereInput = {
       role: "student",
     };
+
+    if (department) {
+      studentsQuery.department = department;
+    }
 
     if (section) {
       studentsQuery.section = section;
@@ -36,6 +41,7 @@ export async function GET(request: NextRequest) {
         fullName: true,
         email: true,
         rollNumber: true,
+        department: true,
         section: true,
         avatarUrl: true,
         totalScore: true,
@@ -185,9 +191,20 @@ export async function GET(request: NextRequest) {
       })
     );
 
+    // Get all unique departments (for filtering UI)
+    const departments = await prisma.profile.findMany({
+      where: { role: "student", department: { not: null } },
+      select: { department: true },
+      distinct: ["department"],
+    });
+
     // Get all unique sections
     const sections = await prisma.profile.findMany({
-      where: { role: "student", section: { not: null } },
+      where: {
+        role: "student",
+        section: { not: null },
+        ...(department ? { department } : {}),
+      },
       select: { section: true },
       distinct: ["section"],
     });
@@ -200,7 +217,11 @@ export async function GET(request: NextRequest) {
       sectionStats = await Promise.all(
         uniqueSections.map(async (sec) => {
           const secStudents = await prisma.profile.findMany({
-            where: { role: "student", section: sec },
+            where: {
+              role: "student",
+              section: sec,
+              ...(department ? { department } : {}),
+            },
             select: { id: true },
           });
 
@@ -239,6 +260,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       students: studentsWithMetrics,
+      departments: departments.map((d) => d.department).filter(Boolean),
       sections: sections.map((s) => s.section).filter(Boolean),
       sectionStats,
     });
