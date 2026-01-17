@@ -105,16 +105,21 @@ export async function POST(
     });
 
     if (existingSubmission) {
-      return NextResponse.json(
-        { error: "Already submitted for this question" },
-        { status: 400 }
-      );
+      // Make this endpoint idempotent: return the existing submission instead of erroring.
+      // This avoids "sometimes it doesn't proceed" due to double-clicks / retries / slow networks.
+      return NextResponse.json({
+        success: true,
+        alreadySubmitted: true,
+        submission: {
+          id: existingSubmission.id,
+          score: existingSubmission.score,
+        },
+      });
     }
 
     // Check if the selected option is correct (question already fetched above)
     const options = question.options as { id: string; text: string; is_correct: boolean }[];
     const selectedOption = options.find((o) => o.id === selectedOptionId);
-    const correctOption = options.find((o) => o.is_correct);
     const isCorrect = selectedOption?.is_correct ?? false;
 
     // Calculate score (base points, can add time bonus later)

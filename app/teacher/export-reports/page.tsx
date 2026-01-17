@@ -34,9 +34,11 @@ export default function ExportReportsPage() {
   const [dateTo, setDateTo] = useState<string>("");
   const [isExporting, setIsExporting] = useState(false);
 
-  const handleExport = async () => {
+  const handleExport = async (typeOverride?: string) => {
+    let loadingToastId: string | undefined;
     try {
       setIsExporting(true);
+      const exportType = typeOverride ?? reportType;
       const params = new URLSearchParams();
 
       if (selectedDepartment !== "all") {
@@ -48,7 +50,7 @@ export default function ExportReportsPage() {
       ) {
         params.append("section", selectedSection);
       }
-      params.append("type", reportType);
+      params.append("type", exportType);
       if (dateFrom) {
         params.append("dateFrom", dateFrom);
       }
@@ -56,7 +58,11 @@ export default function ExportReportsPage() {
         params.append("dateTo", dateTo);
       }
 
-      const loadingToast = toast.loading("Generating comprehensive Excel report...");
+      loadingToastId = toast.loading(
+        exportType === "all"
+          ? "Generating comprehensive Excel report..."
+          : `Generating ${exportType} Excel report...`
+      );
 
       const response = await fetch(`/api/analytics/export?${params.toString()}`);
       if (!response.ok) {
@@ -74,9 +80,9 @@ export default function ExportReportsPage() {
       const sectionPart =
         selectedSection !== "all" &&
         departmentRequiresSection(selectedDepartment as Department)
-          ? `-Section${selectedSection}`
+          ? `-${selectedSection}`
           : "";
-      const typePart = reportType !== "all" ? `-${reportType}` : "";
+      const typePart = exportType !== "all" ? `-${exportType}` : "";
       const filename = `Performance-Report${deptPart}${sectionPart}${typePart}-${timestamp}.xlsx`;
       a.download = filename;
       
@@ -85,10 +91,10 @@ export default function ExportReportsPage() {
       window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
 
-      toast.success("Excel report downloaded successfully!", { id: loadingToast });
+      toast.success("Excel report downloaded successfully!", { id: loadingToastId });
     } catch (error) {
       console.error("Error exporting data:", error);
-      toast.dismiss(loadingToast);
+      if (loadingToastId) toast.dismiss(loadingToastId);
       toast.error(
         error instanceof Error ? error.message : "Failed to export data. Please try again."
       );
@@ -387,7 +393,7 @@ export default function ExportReportsPage() {
               className="gap-2 h-auto py-4 flex-col"
               onClick={() => {
                 setReportType("all");
-                handleExport();
+                handleExport("all");
               }}
               disabled={isExporting}
             >
@@ -401,7 +407,7 @@ export default function ExportReportsPage() {
               className="gap-2 h-auto py-4 flex-col"
               onClick={() => {
                 setReportType("detailed");
-                handleExport();
+                handleExport("detailed");
               }}
               disabled={isExporting}
             >
@@ -415,7 +421,7 @@ export default function ExportReportsPage() {
               className="gap-2 h-auto py-4 flex-col"
               onClick={() => {
                 setReportType("quizzes");
-                handleExport();
+                handleExport("quizzes");
               }}
               disabled={isExporting}
             >
@@ -429,7 +435,7 @@ export default function ExportReportsPage() {
               className="gap-2 h-auto py-4 flex-col"
               onClick={() => {
                 setReportType("performance");
-                handleExport();
+                handleExport("performance");
               }}
               disabled={isExporting}
             >

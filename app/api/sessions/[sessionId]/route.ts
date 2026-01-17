@@ -82,6 +82,9 @@ export async function GET(
           quiz: {
             title: session.quiz.title,
             topic: session.quiz.topic,
+            difficulty: session.quiz.difficulty,
+            timeLimit: session.quiz.timeLimit,
+            totalQuestions: session.quiz.questions.length,
             geolocationEnabled: session.quiz.geolocationEnabled,
           },
           host: session.host,
@@ -139,6 +142,7 @@ export async function GET(
     const participant = session.participants.find((p) => p.studentId === user.id);
     const currentQuestionIndex = participant?.currentQuestionIndex ?? 0;
     const questionsAnswered = participant?.questionsAnswered ?? 0;
+    const participantScore = participant?.sessionScore ?? 0;
 
     const allQuestions = session.quiz.questions.map((q) => ({
       id: q.id,
@@ -162,6 +166,7 @@ export async function GET(
         currentQuestionIndex,
         questionStartedAt: session.questionStartedAt?.toISOString(),
         startedAt: session.startedAt?.toISOString(),
+        participantScore,
         quiz: {
           title: session.quiz.title,
           topic: session.quiz.topic,
