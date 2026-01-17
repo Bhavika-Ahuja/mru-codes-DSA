@@ -35,11 +35,13 @@ export default async function TeacherLayout({
   };
 
   return (
-    <div className="h-screen bg-background flex flex-col">
+    <div className="min-h-dvh bg-background flex flex-col overflow-x-hidden">
       <DashboardHeader profile={profileData} />
       <div className="flex flex-1 min-h-0">
         <DashboardNav role={profile.role} />
-        <main className="flex-1 p-4 pb-24 lg:p-8 lg:pb-8 overflow-y-auto min-w-0">{children}</main>
+        <main className="flex-1 p-3 sm:p-4 pb-[calc(6rem+env(safe-area-inset-bottom))] lg:p-8 lg:pb-8 overflow-y-auto min-w-0">
+          {children}
+        </main>
       </div>
       <MobileNav role={profile.role} />
     </div>

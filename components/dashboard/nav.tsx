@@ -47,8 +47,15 @@ export function DashboardNav({ role }: { role: "student" | "teacher" }) {
   const navItems = role === "teacher" ? teacherNav : studentNav;
 
   return (
-    <aside className="hidden lg:flex lg:flex-col lg:w-56 lg:border-r lg:bg-secondary/30 lg:h-full lg:min-h-full">
-      <nav className="flex flex-col h-full p-4 space-y-1">
+    <aside
+      className={cn(
+        "hidden lg:flex lg:flex-col lg:w-56 lg:shrink-0 lg:border-r lg:bg-secondary/30",
+        // Keep the sidebar visible on desktop and allow internal scrolling for long menus.
+        // Header is h-14 (3.5rem) and is sticky.
+        "lg:sticky lg:top-14 lg:h-[calc(100dvh-3.5rem)] lg:overflow-y-auto"
+      )}
+    >
+      <nav className="flex flex-col p-4 space-y-1">
         {navItems.map((item) => {
           const isActive = pathname === item.href;
           return (

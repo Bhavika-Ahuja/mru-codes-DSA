@@ -1007,33 +1007,53 @@ export default function StudentPlayPage() {
             </div>
           )}
 
-          {/* Mobile Question Navigation */}
+          {/* Mobile Question Navigation (bottom sheet) */}
           {showQuestionSidebar && session.quiz.questions && (
-            <div className="fixed inset-0 bg-black/50 z-40 md:hidden" onClick={() => setShowQuestionSidebar(false)}>
-              <div className="absolute bottom-0 left-0 right-0 bg-background border-t rounded-t-xl p-4 max-h-[60vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+            <div
+              className="fixed inset-0 bg-black/50 z-40 md:hidden"
+              onClick={() => setShowQuestionSidebar(false)}
+            >
+              <div
+                className="absolute bottom-0 left-0 right-0 bg-background border-t rounded-t-xl p-4 max-h-[70vh] overflow-y-auto"
+                onClick={(e) => e.stopPropagation()}
+              >
                 <div className="flex items-center justify-between mb-4">
-                  <h3 className="font-semibold">Questions</h3>
-                  <Button variant="ghost" size="sm" onClick={() => setShowQuestionSidebar(false)}>
+                  <div className="space-y-0.5">
+                    <h3 className="font-semibold">Questions</h3>
+                    <p className="text-xs text-muted-foreground">
+                      Tap a number to jump
+                    </p>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setShowQuestionSidebar(false)}
+                  >
                     <X className="h-4 w-4" />
                   </Button>
                 </div>
-                <div className="grid grid-cols-5 gap-2">
+
+                <div className="grid grid-cols-6 gap-2">
                   {session.quiz.questions.map((q, index) => {
                     const isCurrent = index === session.currentQuestionIndex;
                     const hasAnswer = questionSubmissions.has(q.id);
                     return (
                       <button
                         key={q.id}
-                        onClick={() => jumpToQuestion(index)}
+                        onClick={() => {
+                          setShowQuestionSidebar(false);
+                          jumpToQuestion(index);
+                        }}
                         className={cn(
-                          "aspect-square rounded-lg text-sm font-medium transition-all duration-150 cursor-pointer active:scale-90",
+                          "aspect-square rounded-lg text-sm font-semibold transition-all duration-150 cursor-pointer active:scale-95",
                           isCurrent
                             ? "bg-primary text-primary-foreground shadow-md"
                             : hasAnswer
-                              ? "bg-primary/20 text-primary border border-primary/30 hover:bg-primary/30"
+                              ? "bg-primary/20 text-primary border border-primary/30"
                               : "bg-muted hover:bg-muted/80"
                         )}
                         disabled={isMovingToNext}
+                        aria-label={`Go to question ${index + 1}`}
                       >
                         {index + 1}
                       </button>
@@ -1297,8 +1317,8 @@ export default function StudentPlayPage() {
             variant="outline"
             size="lg"
             className="h-12 px-3 shrink-0"
-            onClick={() => setShowQuestionSidebar(!showQuestionSidebar)}
-            aria-label="Open question list"
+            onClick={() => setShowQuestionSidebar(true)}
+            aria-label="Open question navigation"
           >
             <List className="h-5 w-5" />
           </Button>

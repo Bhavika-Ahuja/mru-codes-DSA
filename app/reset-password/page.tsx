@@ -143,7 +143,7 @@ export default function ResetPasswordPage() {
 
   if (isVerifying) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-dvh flex items-center justify-center">
         <div className="text-center">
           <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto mb-4" />
           <p className="text-muted-foreground">Verifying reset link...</p>
@@ -153,12 +153,12 @@ export default function ResetPasswordPage() {
   }
 
   return (
-    <div className="min-h-screen relative overflow-hidden bg-background">
+    <div className="min-h-dvh relative overflow-hidden bg-background">
       {/* Animated background */}
       <div className="absolute inset-0 overflow-hidden">
         <div className="absolute -top-40 -right-40 w-80 h-80 bg-primary/10 rounded-full blur-3xl animate-pulse" />
         <div className="absolute -bottom-40 -left-40 w-96 h-96 bg-primary/5 rounded-full blur-3xl animate-pulse delay-1000" />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-gradient-to-br from-primary/5 via-transparent to-primary/10 rounded-full blur-3xl" />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-linear-to-br from-primary/5 via-transparent to-primary/10 rounded-full blur-3xl" />
       </div>
 
       {/* Grid pattern overlay */}
@@ -171,7 +171,7 @@ export default function ResetPasswordPage() {
         }}
       />
 
-      <div className="relative min-h-screen flex items-center justify-center p-4">
+      <div className="relative min-h-dvh flex items-start sm:items-center justify-center px-4 py-10">
         <div className="w-full max-w-md">
           {/* Logo & Header */}
           <div className="text-center mb-8 animate-[fade-in_0.5s_ease-out]">

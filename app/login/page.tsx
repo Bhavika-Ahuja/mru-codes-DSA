@@ -120,7 +120,7 @@ export default function LoginPage() {
 
   if (isCheckingAuth) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
+      <div className="min-h-dvh flex items-center justify-center bg-background">
         <div className="flex flex-col items-center gap-4">
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
           <p className="text-sm text-muted-foreground">Checking authentication...</p>
@@ -130,7 +130,7 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen relative overflow-hidden bg-background">
+    <div className="min-h-dvh relative overflow-hidden bg-background">
       {/* Animated background */}
       <div className="absolute inset-0 overflow-hidden">
         <div className="absolute -top-40 -right-40 w-80 h-80 bg-primary/10 rounded-full blur-3xl animate-pulse" />
@@ -148,7 +148,7 @@ export default function LoginPage() {
         }}
       />
 
-      <div className="relative min-h-screen flex items-center justify-center p-4">
+      <div className="relative min-h-dvh flex items-start sm:items-center justify-center px-4 py-10">
         <div className="w-full max-w-md">
           {/* Logo & Header */}
           <div className="text-center mb-8 animate-[fade-in_0.5s_ease-out]">
