@@ -30,11 +30,11 @@ export default async function DashboardLayout({
   };
 
   return (
-    <div className="min-h-dvh bg-background flex flex-col overflow-x-hidden">
+    <div className="h-dvh bg-background flex flex-col overflow-hidden">
       <DashboardHeader profile={profileData} />
-      <div className="flex flex-1 min-h-0">
+      <div className="relative flex flex-1 min-h-0 overflow-hidden">
         <DashboardNav role={profile.role} />
-        <main className="flex-1 p-3 sm:p-4 pb-[calc(6rem+env(safe-area-inset-bottom))] lg:p-8 lg:pb-8 overflow-y-auto min-w-0">
+        <main className="flex-1 min-h-0 p-3 sm:p-4 pb-[calc(6rem+env(safe-area-inset-bottom))] lg:ml-56 lg:p-8 lg:pb-8 overflow-y-auto min-w-0">
           {children}
         </main>
       </div>
