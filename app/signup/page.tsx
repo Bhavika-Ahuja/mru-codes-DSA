@@ -30,7 +30,7 @@ import toast from "react-hot-toast";
 import type { Department } from "@/lib/departments";
 import { DEPARTMENT_OPTIONS, SECTION_OPTIONS, departmentRequiresSection } from "@/lib/departments";
 
-const ALLOWED_COLLEGE_EMAIL_DOMAINS = ["@mru.edu.in", "@mru.ac.in"] as const;
+const ALLOWED_COLLEGE_EMAIL_DOMAINS = ["@mru.edu.in", "@mru.ac.in", "@manavrachna.net"] as const;
 const ALLOWED_COLLEGE_EMAIL_DOMAINS_TEXT = ALLOWED_COLLEGE_EMAIL_DOMAINS.join(", ");
 
 const signupSchema = z.object({
