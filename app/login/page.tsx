@@ -80,7 +80,7 @@ export default function LoginPage() {
       }
 
       if (!authData.user) {
-        toast.error("Failed to sign in. Please try again.");
+        toast.error("Failed to log in. Please try again.");
         setIsLoading(false);
         return;
       }
@@ -171,7 +171,7 @@ export default function LoginPage() {
                 <CardTitle className="text-xl">Welcome back</CardTitle>
               </div>
               <CardDescription>
-                Sign in to continue your learning journey
+                Login to continue your learning journey
               </CardDescription>
             </CardHeader>
             <form onSubmit={handleSubmit(onSubmit)}>
@@ -246,11 +246,11 @@ export default function LoginPage() {
                   {isLoading ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Signing in...
+                      Logging in...
                     </>
                   ) : (
                     <>
-                      Sign In
+                      Login
                       <ArrowRight className="ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform" />
                     </>
                   )}
@@ -271,7 +271,7 @@ export default function LoginPage() {
                     href="/signup"
                     className="font-medium text-primary hover:text-primary/80 transition-colors underline-offset-4 hover:underline"
                   >
-                    Create account
+                    Create an Account
                   </Link>
                 </p>
               </CardFooter>
@@ -280,7 +280,7 @@ export default function LoginPage() {
 
           {/* Footer */}
           <p className="text-center text-xs text-muted-foreground mt-8 animate-[fade-in_0.5s_ease-out_0.3s_both]">
-            By signing in, you agree to our{" "}
+            By logging in, you agree to our{" "}
             <Link href="/terms" className="underline underline-offset-2 hover:text-foreground transition-colors">
               Terms of Service
             </Link>{" "}

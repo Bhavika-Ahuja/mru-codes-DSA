@@ -151,8 +151,8 @@ export default function SignupPage() {
       }
 
       if (authData.user) {
-        toast.success("Account created! Please check your email inbox to verify your account.", { duration: 5000 });
-        router.push("/login");
+        toast.success("Account created! Check your email to verify.", { duration: 4000 });
+        router.push("/verify-account");
       }
     } catch {
       toast.error("An unexpected error occurred");

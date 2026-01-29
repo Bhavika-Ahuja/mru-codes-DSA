@@ -8,7 +8,7 @@ export const DEPARTMENT_OPTIONS: Array<{ value: Department; label: string }> = [
   { value: "GenAI", label: "GenAI (No section)" },
 ];
 
-export const SECTION_OPTIONS = ["A", "B", "C"] as const;
+export const SECTION_OPTIONS = ["A", "B", "C", "D"] as const;
 export type Section = (typeof SECTION_OPTIONS)[number];
 
 export function departmentRequiresSection(dept: Department | null | undefined) {

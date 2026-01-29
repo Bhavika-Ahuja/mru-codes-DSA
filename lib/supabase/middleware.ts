@@ -74,6 +74,7 @@ export async function updateSession(request: NextRequest) {
     pathname.startsWith("/api") ||
     pathname.startsWith("/forgot-password") ||
     pathname.startsWith("/reset-password") ||
+    pathname.startsWith("/verify-account") ||
     pathname.startsWith("/terms") ||
     pathname.startsWith("/privacy");
   const isTeacherRoute = pathname.startsWith("/teacher");
