@@ -23,10 +23,20 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Users, TrendingUp, Award, BarChart3, Download, FileSpreadsheet, Trophy, Target } from "lucide-react";
+import { Users, TrendingUp, Award, BarChart3, Download, FileSpreadsheet, Trophy, Target, FileQuestion, Search } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import toast from "react-hot-toast";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 interface Student {
   id: string;
@@ -51,6 +61,15 @@ interface Student {
       quizTitle: string;
       topic: string;
     }>;
+    quizPerformance?: Array<{
+      quizId: string;
+      quizTitle: string;
+      topic: string;
+      difficulty: string;
+      date: string;
+      score: number;
+      accuracy: number;
+    }>;
     assignmentPerformance: Array<{
       assignmentTitle: string;
       topic: string;
@@ -62,8 +81,28 @@ interface Student {
   };
 }
 
+interface QuizWithPerformances {
+  id: string;
+  title: string;
+  topic: string;
+  difficulty: string;
+  studentPerformances: Array<{
+    studentId: string;
+    fullName: string;
+    rollNumber: string | null;
+    department: string | null;
+    section: string | null;
+    date: string;
+    score: number;
+    accuracy: number;
+    questionsAnswered: number;
+    correctAnswers: number;
+  }>;
+}
+
 interface AnalyticsData {
   students: Student[];
+  quizzes: QuizWithPerformances[];
   departments: string[];
   sections: string[];
   sectionStats: Array<{
@@ -144,6 +183,10 @@ export function TeacherPerformanceDashboard() {
   const [selectedDepartment, setSelectedDepartment] = useState<string>("all");
   const [selectedSection, setSelectedSection] = useState<string>("all");
   const [selectedStudent, setSelectedStudent] = useState<string>("all");
+  const [selectedQuiz, setSelectedQuiz] = useState<string>("all");
+  const [searchStudentQuery, setSearchStudentQuery] = useState("");
+  const [activeTab, setActiveTab] = useState("overview");
+  const [selectedStudentQuizFilter, setSelectedStudentQuizFilter] = useState<string>("all");
 
   const fetchAnalytics = useCallback(async () => {
     setLoading(true);
@@ -182,7 +225,10 @@ export function TeacherPerformanceDashboard() {
         return;
       }
 
-      setData(maybeData as AnalyticsData);
+      setData({
+        ...maybeData,
+        quizzes: Array.isArray(maybeData.quizzes) ? maybeData.quizzes : [],
+      } as AnalyticsData);
     } catch (error) {
       console.error("Error fetching analytics:", error);
       toast.error("Failed to load analytics");
@@ -204,6 +250,14 @@ export function TeacherPerformanceDashboard() {
   useEffect(() => {
     setSelectedStudent("all");
   }, [selectedSection]);
+
+  useEffect(() => {
+    if (selectedStudent === "all" && activeTab === "student") setActiveTab("overview");
+  }, [selectedStudent, activeTab]);
+
+  useEffect(() => {
+    setSelectedStudentQuizFilter("all");
+  }, [selectedStudent]);
 
   const handleExport = async (type: string = "all") => {
     let loadingToastId: string | undefined;
@@ -280,6 +334,21 @@ export function TeacherPerformanceDashboard() {
   const selectedStudentData = selectedStudent !== "all"
     ? students.find((s) => s.id === selectedStudent)
     : null;
+
+  const q = searchStudentQuery.trim().toLowerCase();
+  const searchMatches = q.length < 2
+    ? []
+    : students.filter(
+        (s) =>
+          s.fullName.toLowerCase().includes(q) ||
+          (s.email ?? "").toLowerCase().includes(q) ||
+          (s.rollNumber ?? "").toLowerCase().includes(q)
+      ).slice(0, 20);
+
+  const handleSelectStudent = (id: string) => {
+    setSelectedStudent(id);
+    setActiveTab("student");
+  };
 
   // Department-level aggregates (computed client-side)
   const departmentPerformance = Object.values(
@@ -475,7 +544,13 @@ export function TeacherPerformanceDashboard() {
           </Select>
 
           {selectedSection !== "all" && (
-            <Select value={selectedStudent} onValueChange={setSelectedStudent}>
+            <Select
+              value={selectedStudent}
+              onValueChange={(v) => {
+                setSelectedStudent(v);
+                if (v !== "all") setActiveTab("student");
+              }}
+            >
               <SelectTrigger className="w-[200px]">
                 <SelectValue placeholder="All Students" />
               </SelectTrigger>
@@ -534,6 +609,52 @@ export function TeacherPerformanceDashboard() {
           </Button>
         </div>
       </div>
+
+      {/* Find student — search and click to view performance */}
+      <Card className="border-2 border-primary/10">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base font-semibold flex items-center gap-2">
+            <Search className="h-4 w-4 text-primary" />
+            Find student
+          </CardTitle>
+          <p className="text-sm text-muted-foreground">
+            Search by name, email, or roll number — then click to view performance in all quizzes or filter by one quiz.
+          </p>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="relative max-w-md">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search students..."
+              value={searchStudentQuery}
+              onChange={(e) => setSearchStudentQuery(e.target.value)}
+              className="pl-9"
+            />
+          </div>
+          {searchMatches.length > 0 && (
+            <ScrollArea className="h-[200px] rounded-lg border">
+              <div className="p-2 space-y-1">
+                {searchMatches.map((s) => (
+                  <button
+                    key={s.id}
+                    type="button"
+                    onClick={() => handleSelectStudent(s.id)}
+                    className="w-full flex items-center justify-between gap-2 px-3 py-2 text-left rounded-md hover:bg-muted transition-colors border border-transparent hover:border-border"
+                  >
+                    <span className="font-medium truncate">{s.fullName}</span>
+                    <span className="text-xs text-muted-foreground shrink-0">
+                      {s.rollNumber ?? s.section ?? s.department ?? "—"}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </ScrollArea>
+          )}
+          {q.length >= 2 && searchMatches.length === 0 && (
+            <p className="text-sm text-muted-foreground">No students match &quot;{searchStudentQuery}&quot;</p>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Overview Stats with Enhanced Design */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -609,9 +730,10 @@ export function TeacherPerformanceDashboard() {
         </Card>
       </div>
 
-      <Tabs defaultValue="overview" className="space-y-4">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
         <TabsList>
           <TabsTrigger value="overview">Overview</TabsTrigger>
+          <TabsTrigger value="byQuiz">By Quiz</TabsTrigger>
           <TabsTrigger value="departments">Departments</TabsTrigger>
           <TabsTrigger value="sections">Sections</TabsTrigger>
           <TabsTrigger value="distributions">Distributions</TabsTrigger>
@@ -721,6 +843,126 @@ export function TeacherPerformanceDashboard() {
               </CardContent>
             </Card>
           </div>
+        </TabsContent>
+
+        <TabsContent value="byQuiz" className="space-y-4">
+          <Card className="border-2 border-primary/10 hover:border-primary/20 transition-all duration-300">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-lg font-bold flex items-center gap-2">
+                <FileQuestion className="h-5 w-5 text-primary" />
+                Performance by Quiz
+              </CardTitle>
+              <p className="text-sm text-muted-foreground mt-1">
+                View all students&apos; performance for a specific quiz
+              </p>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex flex-wrap items-center gap-4">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-medium text-muted-foreground">Select quiz:</span>
+                  <Select value={selectedQuiz} onValueChange={setSelectedQuiz}>
+                    <SelectTrigger className="w-[280px]">
+                      <SelectValue placeholder="Choose a quiz" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All quizzes</SelectItem>
+                      {(data?.quizzes ?? []).map((q) => (
+                        <SelectItem key={q.id} value={q.id}>
+                          {q.title} ({q.topic})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              {(data?.quizzes ?? []).length === 0 ? (
+                <div className="py-12 text-center text-muted-foreground rounded-lg border border-dashed">
+                  <FileQuestion className="h-12 w-12 mx-auto mb-3 opacity-50" />
+                  <p className="font-medium">No quiz data yet</p>
+                  <p className="text-sm mt-1">Quiz performance will appear once students take your hosted sessions.</p>
+                </div>
+              ) : selectedQuiz === "all" ? (
+                <div className="space-y-6">
+                  {(data?.quizzes ?? []).map((quiz) => (
+                    <div key={quiz.id} className="space-y-3">
+                      <h3 className="font-semibold text-base flex items-center gap-2">
+                        <FileQuestion className="h-4 w-4 text-primary" />
+                        {quiz.title}
+                        <span className="text-muted-foreground font-normal text-sm">— {quiz.topic} · {quiz.difficulty}</span>
+                      </h3>
+                      <div className="rounded-lg border overflow-hidden">
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead>Student</TableHead>
+                              <TableHead>Roll No.</TableHead>
+                              <TableHead>Section</TableHead>
+                              <TableHead>Department</TableHead>
+                              <TableHead className="text-right">Score</TableHead>
+                              <TableHead className="text-right">Accuracy</TableHead>
+                              <TableHead>Date</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {quiz.studentPerformances.map((sp, idx) => (
+                              <TableRow key={`${sp.studentId}-${sp.date}-${idx}`}>
+                                <TableCell className="font-medium">{sp.fullName}</TableCell>
+                                <TableCell>{sp.rollNumber ?? "—"}</TableCell>
+                                <TableCell>{sp.section ?? "—"}</TableCell>
+                                <TableCell>{sp.department ?? "—"}</TableCell>
+                                <TableCell className="text-right">{sp.score}</TableCell>
+                                <TableCell className="text-right">{sp.accuracy.toFixed(1)}%</TableCell>
+                                <TableCell>{new Date(sp.date).toLocaleDateString()}</TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                (() => {
+                  const q = (data?.quizzes ?? []).find((qu) => qu.id === selectedQuiz);
+                  if (!q) return null;
+                  return (
+                    <div className="rounded-lg border overflow-hidden">
+                      <div className="px-4 py-2 bg-muted/50 border-b">
+                        <span className="font-medium">{q.title}</span>
+                        <span className="text-muted-foreground text-sm ml-2">— {q.topic} · {q.difficulty}</span>
+                      </div>
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Student</TableHead>
+                            <TableHead>Roll No.</TableHead>
+                            <TableHead>Section</TableHead>
+                            <TableHead>Department</TableHead>
+                            <TableHead className="text-right">Score</TableHead>
+                            <TableHead className="text-right">Accuracy</TableHead>
+                            <TableHead>Date</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {q.studentPerformances.map((sp, idx) => (
+                            <TableRow key={`${sp.studentId}-${sp.date}-${idx}`}>
+                              <TableCell className="font-medium">{sp.fullName}</TableCell>
+                              <TableCell>{sp.rollNumber ?? "—"}</TableCell>
+                              <TableCell>{sp.section ?? "—"}</TableCell>
+                              <TableCell>{sp.department ?? "—"}</TableCell>
+                              <TableCell className="text-right">{sp.score}</TableCell>
+                              <TableCell className="text-right">{sp.accuracy.toFixed(1)}%</TableCell>
+                              <TableCell>{new Date(sp.date).toLocaleDateString()}</TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  );
+                })()
+              )}
+            </CardContent>
+          </Card>
         </TabsContent>
 
         <TabsContent value="departments" className="space-y-4">
@@ -1372,6 +1614,78 @@ export function TeacherPerformanceDashboard() {
                 </CardContent>
               </Card>
             </div>
+
+            <Card className="border-2 border-primary/10 hover:border-primary/20 transition-all duration-300">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-lg font-bold flex items-center gap-2">
+                  <FileQuestion className="h-5 w-5 text-primary" />
+                  Performance per Quiz
+                </CardTitle>
+                <p className="text-sm text-muted-foreground mt-1">
+                  This student&apos;s score and accuracy for each quiz — view all or filter by one quiz.
+                </p>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {(selectedStudentData.metrics.quizPerformance ?? []).length > 0 ? (
+                  <>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-sm font-medium text-muted-foreground">Filter by quiz:</span>
+                      <Select value={selectedStudentQuizFilter} onValueChange={setSelectedStudentQuizFilter}>
+                        <SelectTrigger className="w-[240px]">
+                          <SelectValue placeholder="All quizzes" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">All quizzes</SelectItem>
+                          {Array.from(
+                            new Map(
+                              (selectedStudentData.metrics.quizPerformance ?? []).map((qp) => [qp.quizId, qp])
+                            ).values()
+                          ).map((qp) => (
+                            <SelectItem key={qp.quizId} value={qp.quizId}>
+                              {qp.quizTitle} ({qp.topic})
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="rounded-lg border overflow-hidden">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Quiz</TableHead>
+                            <TableHead>Topic</TableHead>
+                            <TableHead>Difficulty</TableHead>
+                            <TableHead className="text-right">Score</TableHead>
+                            <TableHead className="text-right">Accuracy</TableHead>
+                            <TableHead>Date</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {(selectedStudentData.metrics.quizPerformance ?? [])
+                            .filter((qp) => selectedStudentQuizFilter === "all" || qp.quizId === selectedStudentQuizFilter)
+                            .map((qp, idx) => (
+                              <TableRow key={`${qp.quizId}-${qp.date}-${idx}`}>
+                                <TableCell className="font-medium">{qp.quizTitle}</TableCell>
+                                <TableCell>{qp.topic}</TableCell>
+                                <TableCell className="capitalize">{qp.difficulty}</TableCell>
+                                <TableCell className="text-right">{qp.score}</TableCell>
+                                <TableCell className="text-right">{qp.accuracy.toFixed(1)}%</TableCell>
+                                <TableCell>{new Date(qp.date).toLocaleDateString()}</TableCell>
+                              </TableRow>
+                            ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  </>
+                ) : (
+                  <div className="py-12 text-center text-muted-foreground">
+                    <FileQuestion className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                    <p className="font-medium">No quiz data yet</p>
+                    <p className="text-sm mt-1">Performance per quiz will appear once this student takes your hosted sessions.</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
 
             <Card>
               <CardHeader>

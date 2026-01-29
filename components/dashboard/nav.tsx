@@ -16,12 +16,14 @@ import {
   Shield,
   Clock,
   FileSpreadsheet,
+  Code2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const studentNav = [
   { href: "/student/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/student/learn", label: "Learn", icon: BookOpen },
+  { href: "/student/ide", label: "IDE", icon: Code2 },
   { href: "/student/quiz/join", label: "Join Quiz", icon: Zap },
   { href: "/student/study-recommendations", label: "Study Tips", icon: Lightbulb },
   { href: "/student/quiz-history", label: "Quiz History", icon: Clock },
@@ -35,6 +37,7 @@ const teacherNav = [
   { href: "/teacher/quizzes", label: "My Quizzes", icon: Zap },
   { href: "/teacher/quizzes/create", label: "Create Quiz", icon: PlusCircle },
   { href: "/teacher/question-bank", label: "Question Bank", icon: Database },
+  { href: "/teacher/ide", label: "IDE", icon: Code2 },
   { href: "/teacher/cheating-detection", label: "Cheating Detection", icon: Shield },
   { href: "/teacher/assignments", label: "Assignments", icon: FileText },
   { href: "/teacher/performance", label: "Student Performance", icon: Users },

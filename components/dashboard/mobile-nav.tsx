@@ -18,12 +18,14 @@ import {
   FileSpreadsheet,
   ChevronLeft,
   ChevronRight,
+  Code2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const studentNav = [
   { href: "/student/dashboard", label: "Home", icon: LayoutDashboard },
   { href: "/student/learn", label: "Learn", icon: BookOpen },
+  { href: "/student/ide", label: "IDE", icon: Code2 },
   { href: "/student/quiz/join", label: "Quiz", icon: Zap },
   { href: "/student/study-recommendations", label: "Tips", icon: Lightbulb },
   { href: "/student/quiz-history", label: "History", icon: Clock },
@@ -37,6 +39,7 @@ const teacherNav = [
   { href: "/teacher/quizzes", label: "Quizzes", icon: Zap },
   { href: "/teacher/quizzes/create", label: "Create", icon: Zap },
   { href: "/teacher/question-bank", label: "Bank", icon: Database },
+  { href: "/teacher/ide", label: "IDE", icon: Code2 },
   { href: "/teacher/cheating-detection", label: "Security", icon: Shield },
   { href: "/teacher/assignments", label: "Tasks", icon: FileText },
   { href: "/teacher/performance", label: "Students", icon: Users },
