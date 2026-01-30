@@ -160,10 +160,10 @@ const CustomTooltip = ({ active, payload, label }: CustomTooltipProps) => {
                 className="w-3 h-3 rounded-full"
                 style={{ backgroundColor: entry.color }}
               />
-              <span className="text-sm font-medium text-muted-foreground">{entry.name}:</span>
+              <span className="text-sm font-medium text-muted-foreground">{String(entry.name ?? "")}:</span>
               <span className="text-sm font-bold" style={{ color: entry.color }}>
                 {typeof entry.value === "number"
-                  ? entry.name.includes("%") || entry.name.includes("Accuracy")
+                  ? (typeof entry.name === "string" && (entry.name.includes("%") || entry.name.includes("Accuracy")))
                     ? `${entry.value.toFixed(1)}%`
                     : entry.value.toFixed(0)
                   : entry.value}
@@ -339,11 +339,11 @@ export function TeacherPerformanceDashboard() {
   const searchMatches = q.length < 2
     ? []
     : students.filter(
-        (s) =>
-          s.fullName.toLowerCase().includes(q) ||
-          (s.email ?? "").toLowerCase().includes(q) ||
-          (s.rollNumber ?? "").toLowerCase().includes(q)
-      ).slice(0, 20);
+      (s) =>
+        s.fullName.toLowerCase().includes(q) ||
+        (s.email ?? "").toLowerCase().includes(q) ||
+        (s.rollNumber ?? "").toLowerCase().includes(q)
+    ).slice(0, 20);
 
   const handleSelectStudent = (id: string) => {
     setSelectedStudent(id);
@@ -422,14 +422,14 @@ export function TeacherPerformanceDashboard() {
         v < 50
           ? 0
           : v < 60
-          ? 1
-          : v < 70
-          ? 2
-          : v < 80
-          ? 3
-          : v < 90
-          ? 4
-          : 5;
+            ? 1
+            : v < 70
+              ? 2
+              : v < 80
+                ? 3
+                : v < 90
+                  ? 4
+                  : 5;
       counts[idx].students += 1;
     }
     return counts;

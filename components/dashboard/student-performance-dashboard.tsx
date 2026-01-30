@@ -2,8 +2,6 @@
 
 import { useEffect, useState } from "react";
 import {
-  LineChart,
-  Line,
   AreaChart,
   Area,
   BarChart,
@@ -14,12 +12,8 @@ import {
   XAxis,
   YAxis,
   CartesianGrid,
-  RadarChart,
-  PolarGrid,
-  PolarAngleAxis,
-  PolarRadiusAxis,
-  Radar,
 } from "recharts";
+import type { PieLabelRenderProps } from "recharts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ChartContainer, ChartLegend, ChartTooltip } from "@/components/ui/chart";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -67,7 +61,6 @@ const WARNING_LIGHT = "#eab308";
 const INFO_COLOR = "#2563eb";
 const INFO_LIGHT = "#3b82f6";
 const DANGER_COLOR = "#dc2626";
-const DANGER_LIGHT = "#ef4444";
 
 const COLORS = [
   PRIMARY_COLOR,
@@ -101,14 +94,14 @@ const CustomTooltip = ({ active, payload, label }: CustomTooltipProps) => {
         <div className="space-y-2">
           {payload.map((entry, index) => (
             <div key={index} className="flex items-center gap-2">
-              <div 
-                className="w-3 h-3 rounded-full" 
+              <div
+                className="w-3 h-3 rounded-full"
                 style={{ backgroundColor: entry.color }}
               />
-              <span className="text-sm font-medium text-muted-foreground">{entry.name}:</span>
+              <span className="text-sm font-medium text-muted-foreground">{String(entry.name ?? "")}:</span>
               <span className="text-sm font-bold" style={{ color: entry.color }}>
                 {typeof entry.value === "number"
-                  ? entry.name.includes("%") || entry.name.includes("Accuracy")
+                  ? (typeof entry.name === "string" && (entry.name.includes("%") || entry.name.includes("Accuracy")))
                     ? `${entry.value.toFixed(1)}%`
                     : entry.value.toFixed(0)
                   : entry.value}
@@ -121,17 +114,6 @@ const CustomTooltip = ({ active, payload, label }: CustomTooltipProps) => {
   }
   return null;
 };
-
-// Custom label component for pie charts
-type PieLabelEntry = {
-  topic?: string;
-  difficulty?: string;
-  total?: number;
-  value?: number;
-};
-
-const CustomPieLabel = (entry: PieLabelEntry) =>
-  `${entry.topic || entry.difficulty}: ${entry.total ?? entry.value ?? 0}`;
 
 export function StudentPerformanceDashboard() {
   const [data, setData] = useState<AnalyticsData | null>(null);
@@ -320,14 +302,14 @@ export function StudentPerformanceDashboard() {
                       </linearGradient>
                     </defs>
                     <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.2} />
-                    <XAxis 
-                      dataKey="date" 
+                    <XAxis
+                      dataKey="date"
                       stroke="hsl(var(--foreground))"
                       tick={{ fill: "hsl(var(--foreground))" }}
                       style={{ fontSize: "12px", fontWeight: 500 }}
                       tickLine={{ stroke: "hsl(var(--foreground))" }}
                     />
-                    <YAxis 
+                    <YAxis
                       yAxisId="left"
                       stroke="hsl(var(--foreground))"
                       tick={{ fill: "hsl(var(--foreground))" }}
@@ -335,7 +317,7 @@ export function StudentPerformanceDashboard() {
                       tickLine={{ stroke: "hsl(var(--foreground))" }}
                       label={{ value: "Score", angle: -90, position: "insideLeft", style: { fontSize: "12px", fill: "hsl(var(--foreground))" } }}
                     />
-                    <YAxis 
+                    <YAxis
                       yAxisId="right"
                       orientation="right"
                       stroke="hsl(var(--foreground))"
@@ -346,7 +328,7 @@ export function StudentPerformanceDashboard() {
                       label={{ value: "Accuracy %", angle: 90, position: "insideRight", style: { fontSize: "12px", fill: "hsl(var(--foreground))" } }}
                     />
                     <ChartTooltip content={<CustomTooltip />} />
-                    <ChartLegend 
+                    <ChartLegend
                       wrapperStyle={{ fontSize: "13px", fontWeight: 500, paddingTop: "20px", color: "hsl(var(--foreground))" }}
                       iconType="line"
                     />
@@ -417,8 +399,8 @@ export function StudentPerformanceDashboard() {
                         </linearGradient>
                       </defs>
                       <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.2} />
-                      <XAxis 
-                        dataKey="topic" 
+                      <XAxis
+                        dataKey="topic"
                         angle={-45}
                         textAnchor="end"
                         height={100}
@@ -427,7 +409,7 @@ export function StudentPerformanceDashboard() {
                         style={{ fontSize: "12px", fontWeight: 500 }}
                         tickLine={{ stroke: "hsl(var(--foreground))" }}
                       />
-                      <YAxis 
+                      <YAxis
                         stroke="hsl(var(--foreground))"
                         tick={{ fill: "hsl(var(--foreground))" }}
                         style={{ fontSize: "12px", fontWeight: 500 }}
@@ -436,8 +418,8 @@ export function StudentPerformanceDashboard() {
                         label={{ value: "Accuracy %", angle: -90, position: "insideLeft", style: { fontSize: "12px", fill: "hsl(var(--foreground))" } }}
                       />
                       <ChartTooltip content={<CustomTooltip />} />
-                      <Bar 
-                        dataKey="accuracy" 
+                      <Bar
+                        dataKey="accuracy"
                         fill={`url(#topicAccuracyGradient)`}
                         name="Accuracy %"
                         radius={[12, 12, 0, 0]}
@@ -467,17 +449,15 @@ export function StudentPerformanceDashboard() {
                         cx="50%"
                         cy="50%"
                         labelLine={false}
-                        label={(entry: { total: number; topic: string }) => {
+                        label={(props: PieLabelRenderProps) => {
+                          const entry = props as unknown as { total?: number; topic?: string };
+                          const total = entry.total ?? 0;
+                          const topic = entry.topic ?? "";
                           const percent = (
-                            (entry.total / topicPerformanceData.reduce((sum, t) => sum + t.total, 0)) *
+                            (total / topicPerformanceData.reduce((sum, t) => sum + t.total, 0)) *
                             100
                           ).toFixed(0);
-                          return {
-                            value: `${entry.topic}: ${percent}%`,
-                            fill: "hsl(var(--foreground))",
-                            fontSize: 12,
-                            fontWeight: 500,
-                          };
+                          return `${topic}: ${percent}%`;
                         }}
                         outerRadius={120}
                         innerRadius={40}
@@ -488,8 +468,8 @@ export function StudentPerformanceDashboard() {
                         paddingAngle={2}
                       >
                         {topicPerformanceData.map((entry, index) => (
-                          <Cell 
-                            key={`cell-${index}`} 
+                          <Cell
+                            key={`cell-${index}`}
                             fill={COLORS[index % COLORS.length]}
                             stroke="hsl(var(--background))"
                             strokeWidth={2}
@@ -554,14 +534,14 @@ export function StudentPerformanceDashboard() {
                         </linearGradient>
                       </defs>
                       <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.2} />
-                      <XAxis 
-                        dataKey="difficulty" 
+                      <XAxis
+                        dataKey="difficulty"
                         stroke="hsl(var(--foreground))"
                         tick={{ fill: "hsl(var(--foreground))" }}
                         style={{ fontSize: "12px", fontWeight: 500 }}
                         tickLine={{ stroke: "hsl(var(--foreground))" }}
                       />
-                      <YAxis 
+                      <YAxis
                         stroke="hsl(var(--foreground))"
                         tick={{ fill: "hsl(var(--foreground))" }}
                         style={{ fontSize: "12px", fontWeight: 500 }}
@@ -570,8 +550,8 @@ export function StudentPerformanceDashboard() {
                         label={{ value: "Accuracy %", angle: -90, position: "insideLeft", style: { fontSize: "12px", fill: "hsl(var(--foreground))" } }}
                       />
                       <ChartTooltip content={<CustomTooltip />} />
-                      <Bar 
-                        dataKey="accuracy" 
+                      <Bar
+                        dataKey="accuracy"
                         fill={`url(#difficultyAccuracyGradient)`}
                         name="Accuracy %"
                         radius={[12, 12, 0, 0]}
@@ -601,17 +581,15 @@ export function StudentPerformanceDashboard() {
                         cx="50%"
                         cy="50%"
                         labelLine={false}
-                        label={(entry: { total: number; difficulty: string }) => {
+                        label={(props: PieLabelRenderProps) => {
+                          const entry = props as unknown as { total?: number; difficulty?: string };
+                          const total = entry.total ?? 0;
+                          const difficulty = entry.difficulty ?? "";
                           const percent = (
-                            (entry.total / difficultyPerformanceData.reduce((sum, d) => sum + d.total, 0)) *
+                            (total / difficultyPerformanceData.reduce((sum, d) => sum + d.total, 0)) *
                             100
                           ).toFixed(0);
-                          return {
-                            value: `${entry.difficulty}: ${percent}%`,
-                            fill: "hsl(var(--foreground))",
-                            fontSize: 12,
-                            fontWeight: 500,
-                          };
+                          return `${difficulty}: ${percent}%`;
                         }}
                         outerRadius={120}
                         innerRadius={40}
@@ -622,8 +600,8 @@ export function StudentPerformanceDashboard() {
                         paddingAngle={2}
                       >
                         {difficultyPerformanceData.map((entry, index) => (
-                          <Cell 
-                            key={`cell-${index}`} 
+                          <Cell
+                            key={`cell-${index}`}
                             fill={COLORS[index % COLORS.length]}
                             stroke="hsl(var(--background))"
                             strokeWidth={2}
@@ -682,7 +660,7 @@ export function StudentPerformanceDashboard() {
                     const percentage = assignment.percentage || 0;
                     const gradeColor = percentage >= 80 ? "text-green-600" : percentage >= 60 ? "text-yellow-600" : "text-red-600";
                     const bgColor = percentage >= 80 ? "bg-green-500/10 border-green-500/20" : percentage >= 60 ? "bg-yellow-500/10 border-yellow-500/20" : "bg-red-500/10 border-red-500/20";
-                    
+
                     return (
                       <div
                         key={idx}
@@ -696,10 +674,10 @@ export function StudentPerformanceDashboard() {
                             </span>
                           </div>
                           <div className="text-xs text-muted-foreground">
-                            Submitted: {new Date(assignment.submittedAt).toLocaleDateString("en-US", { 
-                              month: "short", 
-                              day: "numeric", 
-                              year: "numeric" 
+                            Submitted: {new Date(assignment.submittedAt).toLocaleDateString("en-US", {
+                              month: "short",
+                              day: "numeric",
+                              year: "numeric"
                             })}
                           </div>
                         </div>
@@ -714,12 +692,11 @@ export function StudentPerformanceDashboard() {
                               </div>
                               <div className="mt-2">
                                 <div className="w-24 h-2 bg-muted rounded-full overflow-hidden">
-                                  <div 
-                                    className={`h-full transition-all duration-500 ${
-                                      percentage >= 80 ? "bg-green-500" : 
-                                      percentage >= 60 ? "bg-yellow-500" : 
-                                      "bg-red-500"
-                                    }`}
+                                  <div
+                                    className={`h-full transition-all duration-500 ${percentage >= 80 ? "bg-green-500" :
+                                      percentage >= 60 ? "bg-yellow-500" :
+                                        "bg-red-500"
+                                      }`}
                                     style={{ width: `${percentage}%` }}
                                   />
                                 </div>
