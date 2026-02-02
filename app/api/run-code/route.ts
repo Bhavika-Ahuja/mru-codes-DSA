@@ -36,11 +36,16 @@ export async function POST(request: NextRequest) {
     const ext = language === "cpp" ? "cpp" : "c";
     const fileName = `main.${ext}`;
 
+    let stdinStr = typeof stdin === "string" ? stdin : "";
+    if (stdinStr && !stdinStr.endsWith("\n")) {
+      stdinStr += "\n";
+    }
+
     const pistonBody = {
       language,
       version: "*",
       files: [{ name: fileName, content: code }],
-      stdin: typeof stdin === "string" ? stdin : "",
+      stdin: stdinStr,
       args: [],
       compile_timeout: 10_000,
       run_timeout: 5_000,

@@ -23,7 +23,9 @@ const SAMPLES = {
   c: `#include <stdio.h>
 
 int main() {
-    printf("Hello, World!\\n");
+    int x;
+    scanf("%d", &x);
+    printf("x is %d\\n", x);
     return 0;
 }
 `,
@@ -44,7 +46,7 @@ export function CodeIde() {
   const [language, setLanguage] = useState<Lang>("cpp");
   const [code, setCode] = useState(SAMPLES.cpp);
   const [stdin, setStdin] = useState("");
-  const [showStdin, setShowStdin] = useState(false);
+  const [showStdin, setShowStdin] = useState(true);
   const [running, setRunning] = useState(false);
   const [output, setOutput] = useState<{
     stdout: string;
