@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Loader2, BookOpen, Sparkles, ArrowRight, Eye, EyeOff } from "lucide-react";
+import { Loader2, BookOpen, Sparkles, ArrowRight, Eye, EyeOff, Mail } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -32,6 +32,9 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
+  const [showResendPrompt, setShowResendPrompt] = useState(false);
+  const [unverifiedEmail, setUnverifiedEmail] = useState("");
+  const [resending, setResending] = useState(false);
   const router = useRouter();
   const supabase = createClient();
 
@@ -64,6 +67,28 @@ export default function LoginPage() {
     resolver: zodResolver(loginSchema),
   });
 
+  const handleResendVerification = async () => {
+    if (!unverifiedEmail || resending) return;
+    setResending(true);
+    try {
+      const { error } = await supabase.auth.resend({
+        type: "signup",
+        email: unverifiedEmail,
+      });
+      if (error) {
+        toast.error(error.message);
+        return;
+      }
+      toast.success("Verification email sent! Check your inbox.");
+      setShowResendPrompt(false);
+      setUnverifiedEmail("");
+    } catch {
+      toast.error("Failed to resend verification email.");
+    } finally {
+      setResending(false);
+    }
+  };
+
   const onSubmit = async (data: LoginFormData) => {
     setIsLoading(true);
 
@@ -74,7 +99,16 @@ export default function LoginPage() {
       });
 
       if (error) {
-        toast.error(error.message);
+        const isEmailNotVerified =
+          error.message?.toLowerCase().includes("email not confirmed") ||
+          error.message?.toLowerCase().includes("email not verified");
+        if (isEmailNotVerified) {
+          toast.error("Email not verified. Please check your inbox or resend the verification link.");
+          setUnverifiedEmail(data.email);
+          setShowResendPrompt(true);
+        } else {
+          toast.error(error.message);
+        }
         setIsLoading(false);
         return;
       }
@@ -93,8 +127,10 @@ export default function LoginPage() {
       );
 
       if (!isVerified) {
-        toast.error("Please verify your email address from the link we sent before signing in.");
+        toast.error("Email not verified. Please check your inbox or resend the verification link.");
         await supabase.auth.signOut();
+        setUnverifiedEmail(data.email);
+        setShowResendPrompt(true);
         setIsLoading(false);
         return;
       }
@@ -276,6 +312,46 @@ export default function LoginPage() {
                 </p>
               </CardFooter>
             </form>
+
+            {showResendPrompt && unverifiedEmail && (
+              <div className="mt-4 rounded-lg border border-amber-500/30 bg-amber-500/5 p-4">
+                <p className="text-sm text-foreground mb-2">
+                  Your email isn&apos;t verified yet. We sent a link to{" "}
+                  <span className="font-medium">{unverifiedEmail}</span>
+                </p>
+                <p className="text-xs text-muted-foreground mb-3">
+                  Check your inbox or spam. Didn&apos;t get it? Click below to resend.
+                </p>
+                <div className="flex gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={handleResendVerification}
+                    disabled={resending}
+                    className="gap-2"
+                  >
+                    {resending ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Mail className="h-4 w-4" />
+                    )}
+                    Resend verification email
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      setShowResendPrompt(false);
+                      setUnverifiedEmail("");
+                    }}
+                  >
+                    Dismiss
+                  </Button>
+                </div>
+              </div>
+            )}
           </Card>
 
           {/* Footer */}

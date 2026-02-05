@@ -30,20 +30,8 @@ import toast from "react-hot-toast";
 import type { Department } from "@/lib/departments";
 import { DEPARTMENT_OPTIONS, SECTION_OPTIONS, departmentRequiresSection } from "@/lib/departments";
 
-const ALLOWED_COLLEGE_EMAIL_DOMAINS = ["@mru.edu.in", "@mru.ac.in", "@manavrachna.net"] as const;
-const ALLOWED_COLLEGE_EMAIL_DOMAINS_TEXT = ALLOWED_COLLEGE_EMAIL_DOMAINS.join(", ");
-
 const signupSchema = z.object({
-  email: z
-    .string()
-    .email("Please enter a valid email")
-    .refine(
-      (email) =>
-        ALLOWED_COLLEGE_EMAIL_DOMAINS.some((d) => email.toLowerCase().endsWith(d)),
-      {
-        message: `You can only make account with college id (${ALLOWED_COLLEGE_EMAIL_DOMAINS_TEXT})`,
-      }
-    ),
+  email: z.string().email("Please enter a valid email"),
   password: z.string().min(6, "Password must be at least 6 characters"),
   confirmPassword: z.string().min(6, "Please confirm your password"),
   fullName: z.string().min(2, "Name must be at least 2 characters"),
@@ -152,7 +140,7 @@ export default function SignupPage() {
 
       if (authData.user) {
         toast.success("Account created! Check your email to verify.", { duration: 4000 });
-        router.push("/verify-account");
+        router.push(`/verify-account?email=${encodeURIComponent(data.email)}`);
       }
     } catch {
       toast.error("An unexpected error occurred");
@@ -275,7 +263,7 @@ export default function SignupPage() {
                     disabled={isLoading}
                   />
                   <p className="text-xs text-muted-foreground">
-                    You can only make account with college id ({ALLOWED_COLLEGE_EMAIL_DOMAINS_TEXT})
+                    Enter your email address
                   </p>
                   {errors.email && (
                     <p className="text-sm text-destructive">{errors.email.message}</p>

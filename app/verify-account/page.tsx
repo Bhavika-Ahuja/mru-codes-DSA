@@ -1,5 +1,6 @@
 "use client";
 
+import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import {
   BookOpen,
@@ -12,6 +13,9 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 
 export default function VerifyAccountPage() {
+  const searchParams = useSearchParams();
+  const email = searchParams.get("email") ?? "";
+
   return (
     <div className="min-h-dvh relative overflow-hidden bg-background">
       <div className="absolute inset-0 overflow-hidden">
@@ -61,9 +65,16 @@ export default function VerifyAccountPage() {
                   Account created. Verify it now!
                 </h2>
                 <p className="text-muted-foreground text-sm max-w-xs mx-auto mb-6 animate-[fade-in_0.5s_ease-out_0.2s_both]">
-                  Verify your account now — go to your email and click the
-                  confirmation link.
+                  {email
+                    ? "We've sent a confirmation link to"
+                    : "Verify your account now — go to your email and click the confirmation link."}
                 </p>
+
+                {email && (
+                  <p className="text-sm font-medium text-foreground mb-4 animate-[fade-in_0.5s_ease-out_0.22s_both]">
+                    {email}
+                  </p>
+                )}
 
                 <div
                   className="w-full rounded-xl border border-green-500/20 bg-green-500/5 p-4 mb-6 text-left animate-[fade-in_0.5s_ease-out_0.25s_both]"
