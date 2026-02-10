@@ -3,6 +3,8 @@
 import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { useUser } from "@/providers/user-provider";
+import { canEditDeleteAnyQuiz } from "@/lib/admin-teachers";
 import {
   Plus,
   Zap,
@@ -59,6 +61,8 @@ interface Quiz {
   totalQuestions: number;
   timeLimit: number;
   createdAt: string;
+  createdById?: string;
+  createdBy?: { fullName: string } | null;
   stats?: {
     totalSessions: number;
     totalParticipants: number;
@@ -78,6 +82,7 @@ interface Quiz {
 
 export default function TeacherQuizzesPage() {
   const router = useRouter();
+  const { profile } = useUser();
   const [quizzes, setQuizzes] = useState<Quiz[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [startingQuizId, setStartingQuizId] = useState<string | null>(null);
@@ -558,19 +563,23 @@ export default function TeacherQuizzesPage() {
                           <Copy className="h-4 w-4 mr-2" />
                           Clone Quiz
                         </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem onClick={() => editQuiz(quiz.id)} className="cursor-pointer">
-                          <Edit className="h-4 w-4 mr-2" />
-                          Edit Quiz
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem 
-                          onClick={() => openDeleteDialog(quiz.id, quiz.title)} 
-                          className="text-destructive cursor-pointer focus:text-destructive"
-                        >
-                          <Trash2 className="h-4 w-4 mr-2" />
-                          Delete Quiz
-                        </DropdownMenuItem>
+                        {(quiz.createdById === profile?.id || canEditDeleteAnyQuiz(profile?.email)) && (
+                          <>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem onClick={() => editQuiz(quiz.id)} className="cursor-pointer">
+                              <Edit className="h-4 w-4 mr-2" />
+                              Edit Quiz
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem 
+                              onClick={() => openDeleteDialog(quiz.id, quiz.title)} 
+                              className="text-destructive cursor-pointer focus:text-destructive"
+                            >
+                              <Trash2 className="h-4 w-4 mr-2" />
+                              Delete Quiz
+                            </DropdownMenuItem>
+                          </>
+                        )}
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </div>

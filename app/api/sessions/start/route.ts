@@ -46,12 +46,9 @@ export async function POST(request: Request) {
 
     const { quizId } = validation.data;
 
-    // Verify the quiz exists, belongs to this teacher, and has questions
+    // Verify the quiz exists and has questions (any teacher can start any quiz)
     const quiz = await prisma.quiz.findFirst({
-      where: {
-        id: quizId,
-        createdById: profile.id,
-      },
+      where: { id: quizId },
       include: {
         questions: {
           orderBy: { orderIndex: "asc" },
@@ -61,7 +58,7 @@ export async function POST(request: Request) {
 
     if (!quiz) {
       return NextResponse.json(
-        { error: "Quiz not found or unauthorized" },
+        { error: "Quiz not found" },
         { status: 404 }
       );
     }

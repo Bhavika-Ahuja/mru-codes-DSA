@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getProfile } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
+import { canEditDeleteAnyQuiz } from "@/lib/admin-teachers";
 
 // GET /api/quizzes/[id] - Get quiz by ID with questions
 export async function GET(
@@ -32,8 +33,8 @@ export async function GET(
       );
     }
 
-    // Teachers can only see their own quizzes
-    if (profile.role === "teacher" && quiz.createdById !== profile.id) {
+    // Students cannot view quiz details; teachers can view any quiz
+    if (profile.role !== "teacher") {
       return NextResponse.json(
         { error: "Forbidden" },
         { status: 403 }
@@ -106,7 +107,9 @@ export async function DELETE(
       );
     }
 
-    if (quiz.createdById !== profile.id) {
+    const isOwner = quiz.createdById === profile.id;
+    const isAdminTeacher = canEditDeleteAnyQuiz(profile.email);
+    if (!isOwner && !isAdminTeacher) {
       return NextResponse.json(
         { error: "You can only delete your own quizzes" },
         { status: 403 }

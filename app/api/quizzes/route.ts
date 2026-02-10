@@ -113,7 +113,7 @@ export async function POST(request: Request) {
   }
 }
 
-// GET: List quizzes for the current teacher
+// GET: List quizzes — teachers see all teachers' quizzes; students are not allowed here
 export async function GET(request: Request) {
   try {
     const profile = await getProfile();
@@ -122,24 +122,28 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    if (profile.role !== "teacher") {
+      return NextResponse.json(
+        { error: "Only teachers can list quizzes" },
+        { status: 403 }
+      );
+    }
+
     const { searchParams } = new URL(request.url);
     const status = searchParams.get("status");
     const limit = parseInt(searchParams.get("limit") || "20");
     const offset = parseInt(searchParams.get("offset") || "0");
 
-    // Build filter
+    // Build filter — no createdById: all teachers see all quizzes
     const where: {
-      createdById: string;
       status?: "draft" | "published" | "archived";
-    } = {
-      createdById: profile.id,
-    };
+    } = {};
 
     if (status && ["draft", "published", "archived"].includes(status)) {
       where.status = status as "draft" | "published" | "archived";
     }
 
-    // Fetch quizzes with question count and statistics
+    // Fetch quizzes with question count, creator info, and statistics
     const [quizzes, total] = await Promise.all([
       prisma.quiz.findMany({
         where,
@@ -149,6 +153,9 @@ export async function GET(request: Request) {
         include: {
           _count: {
             select: { questions: true },
+          },
+          createdBy: {
+            select: { id: true, fullName: true },
           },
         },
       }),
@@ -240,6 +247,8 @@ export async function GET(request: Request) {
           timeLimit: (q.timeLimit && !isNaN(Number(q.timeLimit)) && Number(q.timeLimit) > 0) ? Number(q.timeLimit) : 900, // Default to 15 minutes if null/undefined/invalid
           createdAt: q.createdAt.toISOString(),
           updatedAt: q.updatedAt.toISOString(),
+          createdById: q.createdById,
+          createdBy: q.createdBy ? { fullName: q.createdBy.fullName } : null,
           stats: {
             totalSessions,
             totalParticipants,
