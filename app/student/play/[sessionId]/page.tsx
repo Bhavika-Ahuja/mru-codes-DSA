@@ -947,8 +947,8 @@ export default function StudentPlayPage() {
 
         {/* Main Content Area */}
         <div className="flex-1 space-y-4">
-          {/* Header with timer, score, and answered count */}
-          <div className="sticky top-0 z-30 -mx-4 px-4 py-3 bg-background/90 backdrop-blur border-b border-border sm:static sm:z-auto sm:mx-0 sm:px-0 sm:py-0 sm:bg-transparent sm:border-0">
+          {/* Header with timer, score, and answered count (always visible while scrolling) */}
+          <div className="sticky top-4 z-40">
             <div className="flex items-center justify-between gap-3">
               <div className="flex items-center gap-2 min-w-0">
                 <Badge variant="outline" className="text-sm sm:text-lg px-3 py-2 sm:px-4 sm:py-2 truncate">
