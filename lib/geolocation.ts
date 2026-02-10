@@ -7,8 +7,10 @@
 const CAMPUS_LATITUDE = 28.4569;
 const CAMPUS_LONGITUDE = 77.3083;
 
-// Campus radius in meters (approximately 500 meters = 0.5 km)
-const CAMPUS_RADIUS_METERS = 500;
+// Campus radius in meters
+// Increased to 1500m (~1.5 km) so students slightly outside
+// the immediate campus boundary are still allowed
+const CAMPUS_RADIUS_METERS = 2500;
 
 /**
  * Calculate distance between two points using Haversine formula
