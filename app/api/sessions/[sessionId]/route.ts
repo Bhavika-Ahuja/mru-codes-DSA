@@ -5,7 +5,7 @@ import { z } from "zod";
 
 // Schema for updating session
 const updateSessionSchema = z.object({
-  action: z.enum(["start", "next_question", "end"]),
+  action: z.enum(["start", "next_question", "end", "pause", "resume"]),
 });
 
 // GET: Get session details (for host or participant)
@@ -95,6 +95,16 @@ export async function GET(
       });
     }
 
+    // Extract pause-related fields safely (may not exist if Prisma client is outdated)
+    const sessionPauseState = session as typeof session & {
+      isPaused?: boolean;
+      pausedAt?: Date | null;
+      totalPausedSeconds?: number;
+    };
+    const isPaused = sessionPauseState.isPaused ?? false;
+    const pausedAt = sessionPauseState.pausedAt ?? null;
+    const totalPausedSeconds = sessionPauseState.totalPausedSeconds ?? 0;
+
     // For host, return full data including questions
     if (isHost) {
       return NextResponse.json({
@@ -108,6 +118,9 @@ export async function GET(
           questionStartedAt: session.questionStartedAt?.toISOString(),
           startedAt: session.startedAt?.toISOString(),
           endedAt: session.endedAt?.toISOString(),
+          isPaused,
+          pausedAt: pausedAt?.toISOString() ?? null,
+          totalPausedSeconds,
           quiz: {
             id: session.quiz.id,
             title: session.quiz.title,
@@ -166,6 +179,9 @@ export async function GET(
         currentQuestionIndex,
         questionStartedAt: session.questionStartedAt?.toISOString(),
         startedAt: session.startedAt?.toISOString(),
+        isPaused,
+        pausedAt: pausedAt?.toISOString() ?? null,
+        totalPausedSeconds,
         participantScore,
         quiz: {
           title: session.quiz.title,
@@ -274,6 +290,16 @@ export async function PATCH(
     const questions = session.quiz.questions;
     const now = new Date();
 
+    // Extract pause-related fields via a loose type to avoid Prisma client mismatches
+    const sessionPauseState = session as typeof session & {
+      isPaused?: boolean;
+      pausedAt?: Date | null;
+      totalPausedSeconds?: number;
+    };
+    const isPaused = sessionPauseState.isPaused ?? false;
+    const pausedAt = sessionPauseState.pausedAt ?? null;
+    const totalPausedSeconds = sessionPauseState.totalPausedSeconds ?? 0;
+
     let updateData: {
       status?: "waiting" | "live" | "completed";
       currentQuestionId?: string | null;
@@ -281,6 +307,9 @@ export async function PATCH(
       questionStartedAt?: Date | null;
       startedAt?: Date | null;
       endedAt?: Date | null;
+      isPaused?: boolean;
+      pausedAt?: Date | null;
+      totalPausedSeconds?: number;
     } = {};
 
     switch (action) {
@@ -337,6 +366,50 @@ export async function PATCH(
           endedAt: now,
         };
         break;
+
+      case "pause":
+        if (session.status !== "live") {
+          return NextResponse.json(
+            { error: "Can only pause a live session" },
+            { status: 400 }
+          );
+        }
+        if (isPaused) {
+          return NextResponse.json(
+            { error: "Session is already paused" },
+            { status: 400 }
+          );
+        }
+        updateData = {
+          isPaused: true,
+          pausedAt: now,
+        };
+        break;
+
+      case "resume":
+        if (session.status !== "live") {
+          return NextResponse.json(
+            { error: "Can only resume a live session" },
+            { status: 400 }
+          );
+        }
+        if (!isPaused || !pausedAt) {
+          return NextResponse.json(
+            { error: "Session is not currently paused" },
+            { status: 400 }
+          );
+        }
+        // Calculate how long the session has been paused and accumulate it
+        const pauseDurationSeconds = Math.max(
+          0,
+          Math.floor((now.getTime() - pausedAt.getTime()) / 1000)
+        );
+        updateData = {
+          isPaused: false,
+          pausedAt: null,
+          totalPausedSeconds: totalPausedSeconds + pauseDurationSeconds,
+        };
+        break;
     }
 
     // Update the session
@@ -356,6 +429,9 @@ export async function PATCH(
           question_started_at: updateData.questionStartedAt?.toISOString(),
           started_at: updateData.startedAt?.toISOString(),
           ended_at: updateData.endedAt?.toISOString(),
+          is_paused: updateData.isPaused ?? isPaused,
+          paused_at: (updateData.pausedAt ?? pausedAt)?.toISOString?.(),
+          total_paused_seconds: updateData.totalPausedSeconds ?? totalPausedSeconds,
         })
         .eq("id", sessionId);
     } catch (supabaseError) {

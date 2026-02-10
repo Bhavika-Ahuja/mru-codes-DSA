@@ -49,6 +49,9 @@ interface SessionData {
   currentQuestionIndex: number;
   questionStartedAt: string | null;
   startedAt: string | null;
+  isPaused?: boolean;
+  pausedAt?: string | null;
+  totalPausedSeconds?: number;
   quiz: {
     title: string;
     topic: string;
@@ -385,10 +388,16 @@ export default function StudentPlayPage() {
 
     const startTime = new Date(session.startedAt).getTime();
     const duration = getSafeTimeLimitSeconds(session.quiz.timeLimit) * 1000; // Total quiz time in milliseconds
+    const totalPausedMs = (session.totalPausedSeconds ?? 0) * 1000;
+    const pausedAtMs = session.pausedAt
+      ? new Date(session.pausedAt).getTime()
+      : null;
 
     const updateTime = () => {
       const now = Date.now();
-      const elapsed = now - startTime;
+      const effectiveNow =
+        session.isPaused && pausedAtMs ? pausedAtMs : now;
+      const elapsed = Math.max(0, effectiveNow - startTime - totalPausedMs);
       const remaining = Math.max(0, Math.ceil((duration - elapsed) / 1000));
       setTimeRemaining(remaining);
 
@@ -949,27 +958,35 @@ export default function StudentPlayPage() {
         <div className="flex-1 space-y-4">
           {/* Header with timer, score, and answered count (always visible while scrolling) */}
           <div className="sticky top-4 z-40">
-            <div className="flex items-center justify-between gap-3">
-              <div className="flex items-center gap-2 min-w-0">
-                <Badge variant="outline" className="text-sm sm:text-lg px-3 py-2 sm:px-4 sm:py-2 truncate">
-                  Questions Answered: {questionSubmissions.size}/{session.quiz.totalQuestions}
-                </Badge>
-              </div>
-              <div className="flex items-center gap-3 shrink-0">
-                <div className="flex items-center gap-2">
-                  <Trophy className="h-5 w-5 text-amber-500" />
-                  <span className="font-bold tabular-nums">{totalScore}</span>
+            <div className="flex flex-col gap-1">
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2 min-w-0">
+                  <Badge variant="outline" className="text-sm sm:text-lg px-3 py-2 sm:px-4 sm:py-2 truncate">
+                    Questions Answered: {questionSubmissions.size}/{session.quiz.totalQuestions}
+                  </Badge>
                 </div>
-                <div
-                  className={`flex items-center gap-2 px-3 py-2 sm:px-4 sm:py-2 rounded-lg ${timeRemaining <= 60 ? "bg-red-500/10 text-red-500" : "bg-muted"
+                <div className="flex items-center gap-3 shrink-0">
+                  <div className="flex items-center gap-2">
+                    <Trophy className="h-5 w-5 text-amber-500" />
+                    <span className="font-bold tabular-nums">{totalScore}</span>
+                  </div>
+                  <div
+                    className={`flex items-center gap-2 px-3 py-2 sm:px-4 sm:py-2 rounded-lg ${
+                      timeRemaining <= 60 ? "bg-red-500/10 text-red-500" : "bg-muted"
                     }`}
-                >
-                  <Clock className="h-5 w-5" />
-                  <span className="text-xl sm:text-2xl font-mono font-bold tabular-nums">
-                    {formatTime(timeRemaining)}
-                  </span>
+                  >
+                    <Clock className="h-5 w-5" />
+                    <span className="text-xl sm:text-2xl font-mono font-bold tabular-nums">
+                      {formatTime(timeRemaining)}
+                    </span>
+                  </div>
                 </div>
               </div>
+              {session.isPaused && (
+                <p className="text-xs text-amber-600 dark:text-amber-400">
+                  The quiz is currently paused by your teacher. Please wait...
+                </p>
+              )}
             </div>
           </div>
 

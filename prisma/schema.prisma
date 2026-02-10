@@ -152,6 +152,12 @@ model QuizSession {
   questionStartedAt    DateTime?     @map("question_started_at") @db.Timestamptz
   startedAt            DateTime?     @map("started_at") @db.Timestamptz
   endedAt              DateTime?     @map("ended_at") @db.Timestamptz
+  /// Whether the quiz timer is currently paused (controlled by teacher)
+  isPaused             Boolean       @default(false) @map("is_paused")
+  /// When the quiz was last paused (null when not paused)
+  pausedAt             DateTime?     @map("paused_at") @db.Timestamptz
+  /// Total number of seconds the quiz has been paused across all pauses
+  totalPausedSeconds   Int           @default(0) @map("total_paused_seconds")
   createdAt            DateTime      @default(now()) @map("created_at") @db.Timestamptz
 
   // Relations

@@ -12,6 +12,7 @@ import {
   Check,
   Loader2,
   AlertCircle,
+  Pause,
 } from "lucide-react";
 import toast from "react-hot-toast";
 
@@ -60,6 +61,10 @@ interface SessionData {
   currentQuestionId: string | null;
   questionStartedAt: string | null;
   startedAt: string | null;
+   endedAt?: string | null;
+  isPaused?: boolean;
+  pausedAt?: string | null;
+  totalPausedSeconds?: number;
   quiz: {
     id: string;
     title: string;
@@ -152,22 +157,28 @@ export default function TeacherSessionPage() {
 
   // Timer countdown - total quiz time
   useEffect(() => {
-    if (
-      !session ||
-      session.status !== "live" ||
-      !session.startedAt
-    ) {
+    if (!session || session.status !== "live" || !session.startedAt) {
       setTimeRemaining(0);
       return;
     }
 
     const startTime = new Date(session.startedAt).getTime();
     const duration = session.quiz.timeLimit * 1000; // Total quiz time in milliseconds
+    const totalPausedMs = (session.totalPausedSeconds ?? 0) * 1000;
+    const pausedAtMs = session.pausedAt
+      ? new Date(session.pausedAt).getTime()
+      : null;
 
     const updateTime = () => {
       const now = Date.now();
-      const elapsed = now - startTime;
-      const remaining = Math.max(0, Math.ceil((duration - elapsed) / 1000));
+      // When paused, freeze elapsed time at the moment of pause
+      const effectiveNow =
+        session.isPaused && pausedAtMs ? pausedAtMs : now;
+      const elapsed = Math.max(0, effectiveNow - startTime - totalPausedMs);
+      const remaining = Math.max(
+        0,
+        Math.ceil((duration - elapsed) / 1000)
+      );
       setTimeRemaining(remaining);
     };
 
@@ -178,7 +189,7 @@ export default function TeacherSessionPage() {
   }, [session]);
 
   // Session actions
-  const performAction = useCallback(async (action: "start" | "next_question" | "end") => {
+  const performAction = useCallback(async (action: "start" | "next_question" | "end" | "pause" | "resume") => {
     setIsActionLoading(true);
     try {
       const response = await fetch(`/api/sessions/${sessionId}`, {
@@ -465,14 +476,22 @@ export default function TeacherSessionPage() {
                     <div className="flex items-center gap-3">
                       <div className="flex items-center gap-2">
                         <Clock
-                          className={`h-5 w-5 ${timeRemaining <= 5
-                            ? "text-red-500"
-                            : "text-muted-foreground"
-                            }`}
+                          className={`h-5 w-5 ${
+                            session.isPaused
+                              ? "text-amber-500"
+                              : timeRemaining <= 5
+                                ? "text-red-500"
+                                : "text-muted-foreground"
+                          }`}
                         />
                         <span
-                          className={`text-2xl font-mono font-bold ${timeRemaining <= 60 ? "text-red-500" : ""
-                            }`}
+                          className={`text-2xl font-mono font-bold ${
+                            session.isPaused
+                              ? "text-amber-500"
+                              : timeRemaining <= 60
+                                ? "text-red-500"
+                                : ""
+                          }`}
                         >
                           {(() => {
                             const mins = Math.floor(timeRemaining / 60);
@@ -481,16 +500,39 @@ export default function TeacherSessionPage() {
                           })()}
                         </span>
                       </div>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => addTime(60)}
-                        disabled={isActionLoading}
-                        className="gap-2 cursor-pointer transition-all hover:scale-105 active:scale-95"
-                      >
-                        <Clock className="h-4 w-4" />
-                        Add +1 min
-                      </Button>
+                      <div className="flex items-center gap-2">
+                        <Button
+                          size="sm"
+                          variant={session.isPaused ? "default" : "outline"}
+                          onClick={() =>
+                            performAction(session.isPaused ? "resume" : "pause")
+                          }
+                          disabled={isActionLoading}
+                          className="gap-2 cursor-pointer transition-all hover:scale-105 active:scale-95"
+                        >
+                          {session.isPaused ? (
+                            <>
+                              <Play className="h-4 w-4" />
+                              Resume
+                            </>
+                          ) : (
+                            <>
+                              <Pause className="h-4 w-4" />
+                              Pause
+                            </>
+                          )}
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => addTime(60)}
+                          disabled={isActionLoading}
+                          className="gap-2 cursor-pointer transition-all hover:scale-105 active:scale-95"
+                        >
+                          <Clock className="h-4 w-4" />
+                          Add +1 min
+                        </Button>
+                      </div>
                     </div>
                   </div>
 
