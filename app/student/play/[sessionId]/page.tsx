@@ -8,13 +8,9 @@ import {
   Loader2,
   AlertCircle,
   Check,
-  X,
   Hourglass,
   PartyPopper,
   MapPin,
-  ChevronRight,
-  List,
-  LogOut,
 } from "lucide-react";
 import toast from "react-hot-toast";
 
@@ -84,22 +80,21 @@ export default function StudentPlayPage() {
   const sessionId = params.sessionId as string;
   const supabase = createClient();
 
+  // Detect mobile device (used to relax fullscreen requirements on phones)
+  const [isMobile, setIsMobile] = useState(false);
+
   const [session, setSession] = useState<SessionData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isJoining, setIsJoining] = useState(false);
   const [hasJoined, setHasJoined] = useState(false);
-  const [submittingQuestionId, setSubmittingQuestionId] = useState<string | null>(null);
-  const [selectedOption, setSelectedOption] = useState<string | null>(null);
-  const [hasAnswered, setHasAnswered] = useState(false);
   const [timeRemaining, setTimeRemaining] = useState(0);
   const [totalScore, setTotalScore] = useState(0);
-  const [currentQuestionId, setCurrentQuestionId] = useState<string | null>(null);
-  const [isMovingToNext, setIsMovingToNext] = useState(false);
-  const [showAllQuestions, setShowAllQuestions] = useState(false);
   const [fullscreenGranted, setFullscreenGranted] = useState(false);
-  const [showQuestionSidebar, setShowQuestionSidebar] = useState(false);
   const [questionSubmissions, setQuestionSubmissions] = useState<Map<string, string>>(new Map());
   const [fullscreenWarningTimer, setFullscreenWarningTimer] = useState(0);
+  const [isSubmittingQuiz, setIsSubmittingQuiz] = useState(false);
+  const [isConfirmingSubmit, setIsConfirmingSubmit] = useState(false);
+  const [unansweredQuestions, setUnansweredQuestions] = useState<number[]>([]);
 
   const timeLimitSeconds = getSafeTimeLimitSeconds(session?.quiz?.timeLimit);
   const quizTimeLimitMinutes = Math.max(1, Math.round(timeLimitSeconds / 60));
@@ -118,6 +113,18 @@ export default function StudentPlayPage() {
 
   // Use screenfull library for reliable fullscreen detection
   const { isFullscreen, isSupported, requestFullscreen } = useFullscreenCheck();
+
+  // Detect if the user is on a mobile device (user-agent + viewport width)
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const ua = navigator.userAgent || navigator.vendor || "";
+    const mobileRegex = /Mobi|Android|iPhone|iPad|iPod|Mobile/i;
+    const isMobileDevice =
+      mobileRegex.test(ua) || window.innerWidth <= 768;
+
+    setIsMobile(isMobileDevice);
+  }, []);
 
   // Cache current user id (used for realtime score updates)
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
@@ -147,7 +154,7 @@ export default function StudentPlayPage() {
     }
   }, [session?.status, fullscreenGranted, isFullscreen]);
 
-  // Fetch session data and load saved answers
+  // Fetch session data and load any previously saved answers
   const fetchSession = useCallback(async () => {
     try {
       const response = await fetch(`/api/sessions/${sessionId}`);
@@ -163,200 +170,131 @@ export default function StudentPlayPage() {
         setTotalScore(data.session.participantScore);
       }
 
-      // Load saved submissions for all questions
+      // Load saved submissions for all questions (e.g. if student refreshes)
       const submissionsMap = new Map<string, string>();
       if (data.session.quiz?.questions) {
-        const submissionsResponse = await fetch(`/api/sessions/${sessionId}/submissions`);
+        const submissionsResponse = await fetch(
+          `/api/sessions/${sessionId}/submissions`
+        );
         if (submissionsResponse.ok) {
           const submissionsData = await submissionsResponse.json();
           if (submissionsData.submissions) {
-            submissionsData.submissions.forEach((sub: { questionId: string; selectedOptionId: string }) => {
-              if (sub.selectedOptionId) {
-                submissionsMap.set(sub.questionId, sub.selectedOptionId);
+            submissionsData.submissions.forEach(
+              (sub: { questionId: string; selectedOptionId: string }) => {
+                if (sub.selectedOptionId) {
+                  submissionsMap.set(sub.questionId, sub.selectedOptionId);
+                }
               }
-            });
-            setQuestionSubmissions(submissionsMap);
+            );
           }
         }
       }
 
-      // Reset answer state on new question if question changed
-      if (data.session.currentQuestion?.id !== currentQuestionId) {
-        setCurrentQuestionId(data.session.currentQuestion?.id || null);
-        const currentQId = data.session.currentQuestion?.id;
-
-        // Load saved answer for current question if exists
-        if (currentQId && submissionsMap.has(currentQId)) {
-          setSelectedOption(submissionsMap.get(currentQId) || null);
-          setHasAnswered(true);
-        } else {
-          setSelectedOption(null);
-          setHasAnswered(false);
-        }
-      }
+      setQuestionSubmissions(submissionsMap);
     } catch (error) {
       console.error("Error fetching session:", error);
       toast.error("Failed to load session");
     } finally {
       setIsLoading(false);
     }
-  }, [sessionId, currentQuestionId]);
+  }, [sessionId]);
 
-  // Jump to a specific question - optimized for speed
-  const jumpToQuestion = useCallback(async (questionIndex: number) => {
-    if (!session || questionIndex < 0 || questionIndex >= session.quiz.totalQuestions) return;
-    if (isMovingToNext) return; // Prevent double clicks
-
-    setIsMovingToNext(true);
-
-    // Save current answer if selected (but don't submit if not saved yet)
-    if (selectedOption && session.currentQuestion && !hasAnswered) {
-      setQuestionSubmissions((prev) =>
-        new Map(prev).set(session.currentQuestion!.id, selectedOption)
-      );
-    }
-
-    // Optimistic UI update - update state immediately for instant feedback
-    const targetQuestion = session.quiz.questions?.[questionIndex];
-    if (targetQuestion) {
-      setSession((prev) =>
-        prev
-          ? {
-            ...prev,
-            currentQuestionIndex: questionIndex,
-            currentQuestion: targetQuestion,
-          }
-          : null
-      );
-
-      // Load saved answer for the new question
-      const savedAnswer = questionSubmissions.get(targetQuestion.id);
-      if (savedAnswer) {
-        setSelectedOption(savedAnswer);
-        setHasAnswered(true);
-      } else {
-        setSelectedOption(null);
-        setHasAnswered(false);
-      }
-    }
-
-    setShowQuestionSidebar(false);
-
-    // Background API call - don't block UI
-    try {
-      const response = await fetch(`/api/sessions/${sessionId}/jump-question`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ questionIndex }),
-      });
-
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || "Failed to jump to question");
-      }
-
-      // Silently sync in background
-      fetchSession().catch((err) => console.error("Background sync error:", err));
-    } catch (error) {
-      console.error("Error jumping to question:", error);
-      // Revert on error
-      fetchSession();
-    } finally {
-      setIsMovingToNext(false);
-    }
-  }, [session, isMovingToNext, selectedOption, hasAnswered, questionSubmissions, sessionId, fetchSession]);
-
-  // Save answer silently (don't show correct/incorrect)
+  // Submit all answers for this quiz in one go
   const saveAnswer = useCallback(async () => {
-    if (!session?.currentQuestion || !selectedOption || hasAnswered) return;
+    if (!session) return;
 
-    setHasAnswered(true);
-    const questionId = session.currentQuestion.id;
-    const optionId = selectedOption;
-    const currentIndex = session.currentQuestionIndex;
-    setSubmittingQuestionId(questionId);
-
-    // Optimistic UI: mark answered immediately and move on.
-    setQuestionSubmissions((prev) => new Map(prev).set(questionId, optionId));
-    setSession((prev) => {
-      if (!prev) return prev;
-      const nextAnswered = (prev.questionsAnswered ?? 0) + 1;
-      // If this was the last question, notify user immediately.
-      if (nextAnswered >= prev.quiz.totalQuestions) {
-        toast.success("All questions answered. Tap Submit Quiz to finish.", { duration: 2500 });
-      }
-      return { ...prev, questionsAnswered: nextAnswered };
-    });
-
-    // Auto-advance immediately to keep quiz snappy
-    if (currentIndex < session.quiz.totalQuestions - 1) {
-      void jumpToQuestion(currentIndex + 1);
+    if (questionSubmissions.size === 0) {
+      toast.error("Please answer at least one question before submitting.");
+      return;
     }
+
+    if (isSubmittingQuiz) return;
+
+    setIsSubmittingQuiz(true);
 
     try {
-      const response = await fetch(`/api/sessions/${sessionId}/submit`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          questionId,
-          selectedOptionId: optionId,
-          timeTaken: Math.max(0, timeLimitSeconds - timeRemaining),
-        }),
-      });
+      const answers = Array.from(questionSubmissions.entries());
 
-      const data = await response.json();
+      for (const [questionId, optionId] of answers) {
+        const response = await fetch(`/api/sessions/${sessionId}/submit`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            questionId,
+            selectedOptionId: optionId,
+            timeTaken: Math.max(0, timeLimitSeconds - timeRemaining),
+          }),
+        });
 
-      if (!response.ok) {
-        throw new Error(data.error || "Failed to save answer");
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.error || "Failed to submit answer");
+        }
+
+        const alreadySubmitted = data?.alreadySubmitted === true;
+
+        // Only add score for fresh submissions (server also tracks this)
+        if (
+          !alreadySubmitted &&
+          data?.submission &&
+          typeof data.submission.score === "number"
+        ) {
+          setTotalScore((prev) => prev + data.submission.score);
+        }
       }
 
-      // Save the answer silently - don't show correct/incorrect
-      if (data?.submission && typeof data.submission.score === "number") {
-        setTotalScore((prev) => prev + data.submission.score);
-      }
+      toast.success("Quiz submitted successfully!", { duration: 2500 });
+      setTimeout(() => {
+        router.push("/student/dashboard");
+      }, 900);
     } catch (error) {
-      console.error("Error saving answer:", error);
-      // Revert optimistic state for this question
-      setQuestionSubmissions((prev) => {
-        const next = new Map(prev);
-        next.delete(questionId);
-        return next;
-      });
-      setSession((prev) =>
-        prev
-          ? { ...prev, questionsAnswered: Math.max(0, (prev.questionsAnswered ?? 0) - 1) }
-          : prev
+      console.error("Error submitting quiz:", error);
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Failed to submit quiz. Please try again."
       );
-      toast.error("Failed to save answer. Please try again.");
     } finally {
-      setSubmittingQuestionId((prev) => (prev === questionId ? null : prev));
+      setIsSubmittingQuiz(false);
     }
-  }, [session, selectedOption, hasAnswered, sessionId, timeRemaining, timeLimitSeconds, jumpToQuestion]);
+  }, [
+    session,
+    questionSubmissions,
+    isSubmittingQuiz,
+    sessionId,
+    timeLimitSeconds,
+    timeRemaining,
+    router,
+  ]);
 
   // Anti-cheat system
   const handleViolation = useCallback(
     (type: string) => {
       if (type === "max_violations" && session?.status === "live") {
-        // Auto-save current answer if available and exit
-        if (selectedOption && !hasAnswered) {
-          saveAnswer();
-        }
-        // Redirect after a delay
+        // Auto-submit whatever answers the student has selected so far, then exit
+        void saveAnswer();
         setTimeout(() => {
           toast.error("Quiz terminated due to multiple violations.");
           router.push("/student/dashboard");
         }, 2000);
       }
     },
-    [session, selectedOption, hasAnswered, saveAnswer, router]
+    [session, saveAnswer, router]
   );
 
   // Only enable anti-cheat when quiz is live and fullscreen is granted
+  // On mobile, we keep anti-cheat active but do NOT enforce fullscreen.
+  const isFullscreenEnforced =
+    !isMobile && session?.status === "live" && fullscreenGranted;
+  const isAntiCheatActive =
+    session?.status === "live" && (fullscreenGranted || isMobile);
+
   const { violationCount } = useAntiCheat({
     sessionId,
-    enableFullscreen: session?.status === "live" && fullscreenGranted,
+    enableFullscreen: isFullscreenEnforced,
     maxViolations: 15, // More lenient
-    isActive: session?.status === "live" && fullscreenGranted,
+    isActive: isAntiCheatActive,
     onViolation: handleViolation,
   });
 
@@ -367,7 +305,7 @@ export default function StudentPlayPage() {
 
   // Check fullscreen status periodically when quiz is live
   useEffect(() => {
-    if (session?.status === "live") {
+    if (session?.status === "live" && !isMobile) {
       const checkInterval = setInterval(() => {
         if (isFullscreen && !fullscreenGranted) {
           setFullscreenGranted(true);
@@ -377,7 +315,7 @@ export default function StudentPlayPage() {
 
       return () => clearInterval(checkInterval);
     }
-  }, [session?.status, isFullscreen, fullscreenGranted]);
+  }, [session?.status, isFullscreen, fullscreenGranted, isMobile]);
 
   // Subscribe to realtime updates
   useEffect(() => {
@@ -390,9 +328,7 @@ export default function StudentPlayPage() {
         }
       })
       .on("broadcast", { event: "question_change" }, () => {
-        // New question - refetch and reset state
-        setSelectedOption(null);
-        setHasAnswered(false);
+        // Host moved to another question – for scrollable view we just refresh metadata
         fetchSession();
       })
       .on("broadcast", { event: "session_end" }, () => {
@@ -425,9 +361,7 @@ export default function StudentPlayPage() {
         },
         (payload) => {
           console.log("Session updated:", payload);
-          // Reset state and refetch when current_question_id changes
-          setSelectedOption(null);
-          setHasAnswered(false);
+          // Refetch when current_question_id or status changes
           fetchSession();
         }
       )
@@ -542,13 +476,43 @@ export default function StudentPlayPage() {
   };
 
 
-  // Move to next question
-  // Handle quiz submission
+  // Final quiz submission handler (handles confirmation and unanswered list)
   const handleSubmitQuiz = () => {
-    toast.success("Quiz submitted successfully!", { duration: 2500 });
-    setTimeout(() => {
-      router.push("/student/dashboard");
-    }, 900);
+    if (!session) return;
+
+    const unanswered =
+      session.quiz.questions?.reduce<number[]>((acc, q, index) => {
+        if (!questionSubmissions.has(q.id)) {
+          acc.push(index + 1);
+        }
+        return acc;
+      }, []) ?? [];
+
+    // No unanswered questions: submit immediately
+    if (unanswered.length === 0) {
+      setIsConfirmingSubmit(false);
+      setUnansweredQuestions([]);
+      void saveAnswer();
+      return;
+    }
+
+    // First click with unanswered questions: warn and require confirmation
+    if (!isConfirmingSubmit) {
+      setIsConfirmingSubmit(true);
+      setUnansweredQuestions(unanswered);
+      toast(
+        `You have unanswered questions: ${unanswered.join(
+          ", "
+        )}. Tap Submit again to submit anyway.`,
+        { icon: "⚠️" }
+      );
+      return;
+    }
+
+    // Second click: user confirmed, submit anyway
+    setIsConfirmingSubmit(false);
+    setUnansweredQuestions([]);
+    void saveAnswer();
   };
 
 
@@ -720,7 +684,7 @@ export default function StudentPlayPage() {
   }
 
   // Fullscreen requirement screen (before quiz starts)
-  if (session && session.status === "live" && !fullscreenGranted) {
+  if (session && session.status === "live" && !fullscreenGranted && !isMobile) {
     const getDifficultyColor = (difficulty: string) => {
       switch (difficulty) {
         case "easy":
@@ -878,7 +842,7 @@ export default function StudentPlayPage() {
         )}
 
         {/* Fullscreen Warning Banner with Timer */}
-        {session.status === "live" && fullscreenGranted && !isFullscreen && (
+        {session.status === "live" && fullscreenGranted && !isFullscreen && !isMobile && (
           <Card className="border-red-500/50 bg-red-500/10 mb-4 animate-pulse">
             <CardContent className="pt-4 pb-4">
               <div className="flex items-center gap-3">
@@ -972,340 +936,172 @@ export default function StudentPlayPage() {
         )}
 
         {/* Main Content Area */}
-        <div className="flex gap-4 relative">
-          {/* Question Navigation Sidebar */}
-          {showQuestionSidebar && session.quiz.questions && (
-            <div className="hidden md:block w-20 shrink-0">
-              <Card className="sticky top-4">
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-xs">Questions</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-1">
-                  {session.quiz.questions.map((q, index) => {
-                    const isCurrent = index === session.currentQuestionIndex;
-                    const hasAnswer = questionSubmissions.has(q.id);
-                    return (
-                      <button
-                        key={q.id}
-                        onClick={() => jumpToQuestion(index)}
-                        className={cn(
-                          "w-full aspect-square rounded-lg text-sm font-medium transition-all duration-150 cursor-pointer active:scale-90",
-                          isCurrent
-                            ? "bg-primary text-primary-foreground shadow-md"
-                            : hasAnswer
-                              ? "bg-primary/20 text-primary border border-primary/30 hover:bg-primary/30"
-                              : "bg-muted hover:bg-muted/80 hover:scale-105"
-                        )}
-                        disabled={isMovingToNext}
-                      >
-                        {index + 1}
-                      </button>
-                    );
-                  })}
-                </CardContent>
-              </Card>
-            </div>
-          )}
-
-          {/* Mobile Question Navigation (bottom sheet) */}
-          {showQuestionSidebar && session.quiz.questions && (
-            <div
-              className="fixed inset-0 bg-black/50 z-40 md:hidden"
-              onClick={() => setShowQuestionSidebar(false)}
-            >
-              <div
-                className="absolute bottom-0 left-0 right-0 bg-background border-t rounded-t-xl p-4 max-h-[70vh] overflow-y-auto"
-                onClick={(e) => e.stopPropagation()}
-              >
-                <div className="flex items-center justify-between mb-4">
-                  <div className="space-y-0.5">
-                    <h3 className="font-semibold">Questions</h3>
-                    <p className="text-xs text-muted-foreground">
-                      Tap a number to jump
-                    </p>
-                  </div>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setShowQuestionSidebar(false)}
-                  >
-                    <X className="h-4 w-4" />
-                  </Button>
+        <div className="flex-1 space-y-4">
+          {/* Header with timer, score, and answered count */}
+          <div className="sticky top-0 z-30 -mx-4 px-4 py-3 bg-background/90 backdrop-blur border-b border-border sm:static sm:z-auto sm:mx-0 sm:px-0 sm:py-0 sm:bg-transparent sm:border-0">
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2 min-w-0">
+                <Badge variant="outline" className="text-sm sm:text-lg px-3 py-2 sm:px-4 sm:py-2 truncate">
+                  Questions Answered: {questionSubmissions.size}/{session.quiz.totalQuestions}
+                </Badge>
+              </div>
+              <div className="flex items-center gap-3 shrink-0">
+                <div className="flex items-center gap-2">
+                  <Trophy className="h-5 w-5 text-amber-500" />
+                  <span className="font-bold tabular-nums">{totalScore}</span>
                 </div>
-
-                <div className="grid grid-cols-6 gap-2">
-                  {session.quiz.questions.map((q, index) => {
-                    const isCurrent = index === session.currentQuestionIndex;
-                    const hasAnswer = questionSubmissions.has(q.id);
-                    return (
-                      <button
-                        key={q.id}
-                        onClick={() => {
-                          setShowQuestionSidebar(false);
-                          jumpToQuestion(index);
-                        }}
-                        className={cn(
-                          "aspect-square rounded-lg text-sm font-semibold transition-all duration-150 cursor-pointer active:scale-95",
-                          isCurrent
-                            ? "bg-primary text-primary-foreground shadow-md"
-                            : hasAnswer
-                              ? "bg-primary/20 text-primary border border-primary/30"
-                              : "bg-muted hover:bg-muted/80"
-                        )}
-                        disabled={isMovingToNext}
-                        aria-label={`Go to question ${index + 1}`}
-                      >
-                        {index + 1}
-                      </button>
-                    );
-                  })}
+                <div
+                  className={`flex items-center gap-2 px-3 py-2 sm:px-4 sm:py-2 rounded-lg ${timeRemaining <= 60 ? "bg-red-500/10 text-red-500" : "bg-muted"
+                    }`}
+                >
+                  <Clock className="h-5 w-5" />
+                  <span className="text-xl sm:text-2xl font-mono font-bold tabular-nums">
+                    {formatTime(timeRemaining)}
+                  </span>
                 </div>
               </div>
             </div>
+          </div>
+
+          {/* Timer progress */}
+          <Progress
+            value={(timeRemaining / timeLimitSeconds) * 100}
+            className={`h-2 ${timeRemaining <= 60 ? "[&>div]:bg-red-500" : ""}`}
+          />
+
+          {/* Unanswered questions warning (shown after first submit click) */}
+          {isConfirmingSubmit && unansweredQuestions.length > 0 && (
+            <div className="mt-4 p-4 border border-amber-500/40 bg-amber-500/10 rounded-lg text-sm text-amber-800 dark:text-amber-200">
+              <p className="font-semibold mb-1">Warning: Unanswered questions</p>
+              <p className="text-xs sm:text-sm">
+                These questions are unanswered: {unansweredQuestions.join(", ")}. Tap
+                <span className="font-semibold"> Submit Quiz</span> again to submit
+                anyway.
+              </p>
+            </div>
           )}
 
-          <div className="flex-1 space-y-4">
-            {/* Header with timer and score */}
-            <div className="sticky top-0 z-30 -mx-4 px-4 py-3 bg-background/90 backdrop-blur border-b border-border sm:static sm:z-auto sm:mx-0 sm:px-0 sm:py-0 sm:bg-transparent sm:border-0">
-              <div className="flex items-center justify-between gap-3">
-                <div className="flex items-center gap-2 min-w-0">
+          {/* Question list - all questions scrollable */}
+          <div className="space-y-4">
+            {session.quiz.questions?.map((question, qIndex) => {
+              const selectedId = questionSubmissions.get(question.id) ?? null;
+              return (
+                <Card key={question.id} className="border-primary/20">
+                  <CardHeader>
+                    <CardTitle className="text-lg sm:text-xl leading-relaxed">
+                      Q{qIndex + 1}. {question.questionText}
+                    </CardTitle>
+                    <CardDescription>
+                      {question.points} points
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    {question.options.map((option, index) => {
+                      const isSelected = selectedId === option.id;
+                      let optionClass =
+                        "flex items-center gap-4 p-4 sm:p-4 rounded-xl border-2 transition-all duration-150 cursor-pointer active:scale-[0.98] text-left";
+
+                      if (isSelected) {
+                        optionClass +=
+                          " border-foreground bg-primary/10 shadow-sm";
+                      } else {
+                        optionClass +=
+                          " border-border hover:border-primary/50 hover:bg-muted/50 hover:scale-[1.01]";
+                      }
+
+                      return (
+                        <button
+                          key={option.id}
+                          className={`${optionClass} w-full`}
+                          onClick={() =>
+                            setQuestionSubmissions((prev) => {
+                              const next = new Map(prev);
+                              next.set(question.id, option.id);
+                              return next;
+                            })
+                          }
+                          disabled={isSubmittingQuiz || session.status === "completed"}
+                          aria-label={`Select option ${String.fromCharCode(
+                            65 + index
+                          )} for question ${qIndex + 1}`}
+                        >
+                          <span
+                            className={`w-10 h-10 rounded-lg flex items-center justify-center text-lg font-bold ${isSelected
+                              ? "bg-primary text-primary-foreground"
+                              : "bg-muted"
+                              }`}
+                          >
+                            {String.fromCharCode(65 + index)}
+                          </span>
+                          <span className="flex-1 text-base sm:text-lg leading-snug wrap-break-word">
+                            {option.text}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+
+          {/* Completion message (desktop) */}
+          {questionSubmissions.size >= session.quiz.totalQuestions && (
+            <Card className="border-primary/20 bg-primary/5">
+              <CardContent className="pt-6">
+                <div className="text-center space-y-4">
+                  <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-primary/20 mb-4">
+                    <Check className="h-8 w-8 text-primary" />
+                  </div>
+                  <h3 className="text-xl font-bold">All Questions Completed!</h3>
+                  <p className="text-sm text-muted-foreground">
+                    You have answered all {session.quiz.totalQuestions} questions.
+                  </p>
                   <Button
-                    variant="outline"
-                    size="sm"
-                    className="cursor-pointer transition-all hover:scale-110 active:scale-90"
-                    onClick={() => jumpToQuestion(Math.max(0, session.currentQuestionIndex - 1))}
-                    disabled={session.currentQuestionIndex === 0 || isMovingToNext}
+                    size="lg"
+                    className="w-full cursor-pointer transition-all hover:scale-[1.02] active:scale-[0.98]"
+                    onClick={handleSubmitQuiz}
+                    disabled={isSubmittingQuiz}
                   >
-                    <ChevronRight className="h-4 w-4 rotate-180" />
-                  </Button>
-                  <Badge variant="outline" className="text-sm sm:text-lg px-3 py-2 sm:px-4 sm:py-2 truncate">
-                    Q {session.currentQuestionIndex + 1}/{session.quiz.totalQuestions}
-                  </Badge>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="cursor-pointer transition-all hover:scale-110 active:scale-90"
-                    onClick={() => jumpToQuestion(Math.min(session.quiz.totalQuestions - 1, session.currentQuestionIndex + 1))}
-                    disabled={session.currentQuestionIndex >= session.quiz.totalQuestions - 1 || isMovingToNext}
-                  >
-                    <ChevronRight className="h-4 w-4" />
+                    {isSubmittingQuiz ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Submitting...
+                      </>
+                    ) : (
+                      <>
+                        <PartyPopper className="h-4 w-4 mr-2" />
+                        {isConfirmingSubmit ? "Submit Anyway" : "Submit Quiz"}
+                      </>
+                    )}
                   </Button>
                 </div>
-                <div className="flex items-center gap-3 shrink-0">
-                  <div className="flex items-center gap-2">
-                    <Trophy className="h-5 w-5 text-amber-500" />
-                    <span className="font-bold tabular-nums">{totalScore}</span>
-                  </div>
-                  <div
-                    className={`flex items-center gap-2 px-3 py-2 sm:px-4 sm:py-2 rounded-lg ${timeRemaining <= 60
-                      ? "bg-red-500/10 text-red-500"
-                      : "bg-muted"
-                      }`}
-                  >
-                    <Clock className="h-5 w-5" />
-                    <span className="text-xl sm:text-2xl font-mono font-bold tabular-nums">
-                      {formatTime(timeRemaining)}
-                    </span>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Timer progress */}
-            <Progress
-              value={(timeRemaining / timeLimitSeconds) * 100}
-              className={`h-2 ${timeRemaining <= 60 ? "[&>div]:bg-red-500" : ""}`}
-            />
-
-            {/* Question Card */}
-            <Card className="border-primary/20">
-              <CardHeader>
-                <CardTitle className="text-lg sm:text-xl leading-relaxed">
-                  {currentQuestion.questionText}
-                </CardTitle>
-                <CardDescription>
-                  {currentQuestion.points} points
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                {currentQuestion.options.map((option, index) => {
-                  const isSelected = selectedOption === option.id;
-
-                  let optionClass =
-                    "flex items-center gap-4 p-4 sm:p-4 rounded-xl border-2 transition-all duration-150 cursor-pointer active:scale-[0.98] text-left";
-
-                  if (isSelected) {
-                    optionClass += " border-foreground bg-primary/10 shadow-sm";
-                  } else {
-                    optionClass +=
-                      " border-border hover:border-primary/50 hover:bg-muted/50 hover:scale-[1.01]";
-                  }
-
-                  return (
-                    <button
-                      key={option.id}
-                      className={`${optionClass} w-full`}
-                      onClick={() => setSelectedOption(option.id)}
-                      disabled={hasAnswered || submittingQuestionId === currentQuestion.id}
-                      aria-label={`Select option ${String.fromCharCode(65 + index)}`}
-                    >
-                      <span
-                        className={`w-10 h-10 rounded-lg flex items-center justify-center text-lg font-bold ${isSelected
-                          ? "bg-primary text-primary-foreground"
-                          : "bg-muted"
-                          }`}
-                      >
-                        {String.fromCharCode(65 + index)}
-                      </span>
-                      <span className="flex-1 text-base sm:text-lg leading-snug wrap-break-word">{option.text}</span>
-                    </button>
-                  );
-                })}
               </CardContent>
             </Card>
+          )}
 
-            {/* Desktop Proceed + Sidebar */}
-            <div className="hidden sm:flex gap-3">
-              <Button
-                size="lg"
-                className="flex-1 h-14 text-lg cursor-pointer transition-all hover:scale-[1.02] active:scale-[0.98]"
-                onClick={saveAnswer}
-                disabled={
-                  !selectedOption ||
-                  hasAnswered ||
-                  submittingQuestionId === currentQuestion.id
-                }
-              >
-                {submittingQuestionId === currentQuestion.id ? (
-                  <>
-                    <Loader2 className="h-5 w-5 mr-2 animate-spin" />
-                    Processing...
-                  </>
-                ) : (
-                  "Proceed"
-                )}
-              </Button>
-              <Button
-                size="lg"
-                variant="outline"
-                className="h-14 cursor-pointer transition-all hover:scale-105 active:scale-95"
-                onClick={() => setShowQuestionSidebar(!showQuestionSidebar)}
-              >
-                <List className="h-5 w-5" />
-              </Button>
-            </div>
-
-            {/* Desktop Navigation buttons */}
-            <div className="hidden sm:flex gap-3">
-              <Button
-                variant="outline"
-                className="flex-1 cursor-pointer transition-all hover:scale-[1.02] active:scale-[0.98]"
-                onClick={() => jumpToQuestion(Math.max(0, session.currentQuestionIndex - 1))}
-                disabled={session.currentQuestionIndex === 0 || isMovingToNext}
-              >
-                <ChevronRight className="h-4 w-4 mr-2 rotate-180" />
-                Previous
-              </Button>
-              <Button
-                variant="outline"
-                className="flex-1 cursor-pointer transition-all hover:scale-[1.02] active:scale-[0.98]"
-                onClick={() => jumpToQuestion(Math.min(session.quiz.totalQuestions - 1, session.currentQuestionIndex + 1))}
-                disabled={session.currentQuestionIndex >= session.quiz.totalQuestions - 1 || isMovingToNext}
-              >
-                Next
-                <ChevronRight className="h-4 w-4 ml-2" />
-              </Button>
-            </div>
-
-            {/* Completion message */}
-            {(session.questionsAnswered ?? 0) >= session.quiz.totalQuestions && (
-              <Card className="border-primary/20 bg-primary/5">
-                <CardContent className="pt-6">
-                  <div className="text-center space-y-4">
-                    <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-primary/20 mb-4">
-                      <Check className="h-8 w-8 text-primary" />
-                    </div>
-                    <h3 className="text-xl font-bold">All Questions Completed!</h3>
-                    <p className="text-sm text-muted-foreground">
-                      You have answered all {session.quiz.totalQuestions} questions.
-                    </p>
-                    <Button
-                      size="lg"
-                      className="w-full cursor-pointer transition-all hover:scale-[1.02] active:scale-[0.98]"
-                      onClick={handleSubmitQuiz}
-                    >
-                      <PartyPopper className="h-4 w-4 mr-2" />
-                      Submit Quiz
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
+          {/* Desktop Submit button (even if there are unanswered questions) */}
+          <div className="hidden sm:flex justify-end mt-4">
+            <Button
+              size="lg"
+              className="min-w-[180px]"
+              onClick={handleSubmitQuiz}
+              disabled={isSubmittingQuiz || questionSubmissions.size === 0}
+            >
+              {isSubmittingQuiz ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Submitting...
+                </>
+              ) : (
+                <>{isConfirmingSubmit ? "Submit Anyway" : "Submit Quiz"}</>
+              )}
+            </Button>
           </div>
         </div>
-
-        {/* All Questions Review Modal */}
-        {showAllQuestions && session.quiz.questions && (
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-            <Card className="max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col">
-              <CardHeader className="shrink-0">
-                <div className="flex items-center justify-between">
-                  <CardTitle>All Questions Review</CardTitle>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setShowAllQuestions(false)}
-                  >
-                    <X className="h-4 w-4" />
-                  </Button>
-                </div>
-              </CardHeader>
-              <CardContent className="flex-1 overflow-y-auto space-y-6">
-                {session.quiz.questions.map((question, index) => (
-                  <Card key={question.id} className="border-border">
-                    <CardHeader>
-                      <CardTitle className="text-lg">
-                        Question {index + 1}: {question.questionText}
-                      </CardTitle>
-                      <CardDescription>{question.points} points</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="space-y-2">
-                        {question.options.map((option, optIndex) => (
-                          <div
-                            key={option.id}
-                            className="flex items-center gap-3 p-3 rounded-lg border border-border"
-                          >
-                            <span className="w-8 h-8 rounded-lg flex items-center justify-center text-sm font-bold bg-muted">
-                              {String.fromCharCode(65 + optIndex)}
-                            </span>
-                            <span className="flex-1">{option.text}</span>
-                          </div>
-                        ))}
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </CardContent>
-              <div className="p-6 border-t shrink-0">
-                <Button
-                  size="lg"
-                  className="w-full cursor-pointer transition-all hover:scale-[1.02] active:scale-[0.98]"
-                  onClick={() => {
-                    setShowAllQuestions(false);
-                    handleSubmitQuiz();
-                  }}
-                >
-                  <LogOut className="h-4 w-4 mr-2" />
-                  Submit Quiz
-                </Button>
-              </div>
-            </Card>
-          </div>
-        )}
       </div>
 
-      {/* Mobile sticky action bar */}
+      {/* Mobile sticky action bar - single Submit button */}
       <div
         className={cn(
           "fixed bottom-0 left-0 right-0 z-40 border-t border-border bg-background/90 backdrop-blur sm:hidden",
@@ -1314,52 +1110,19 @@ export default function StudentPlayPage() {
       >
         <div className="max-w-6xl mx-auto p-3 flex items-center gap-2">
           <Button
-            variant="outline"
             size="lg"
-            className="h-12 px-3 shrink-0"
-            onClick={() => setShowQuestionSidebar(true)}
-            aria-label="Open question navigation"
+            className="h-12 flex-1"
+            onClick={handleSubmitQuiz}
+            disabled={isSubmittingQuiz || questionSubmissions.size === 0}
           >
-            <List className="h-5 w-5" />
-          </Button>
-
-          {(session.questionsAnswered ?? 0) >= session.quiz.totalQuestions ? (
-            <Button
-              size="lg"
-              className="h-12 flex-1"
-              onClick={() => router.push("/student/dashboard")}
-            >
-              Submit & Exit
-            </Button>
-          ) : (
-            <Button
-              size="lg"
-              className="h-12 flex-1"
-              onClick={saveAnswer}
-              disabled={!selectedOption || hasAnswered || submittingQuestionId === currentQuestion.id}
-            >
-              {submittingQuestionId === currentQuestion.id ? (
-                <>
-                  <Loader2 className="h-5 w-5 mr-2 animate-spin" />
-                  Saving...
-                </>
-              ) : (
-                "Proceed"
-              )}
-            </Button>
-          )}
-
-          <Button
-            variant="outline"
-            size="lg"
-            className="h-12 px-3 shrink-0"
-            onClick={() =>
-              jumpToQuestion(Math.min(session.quiz.totalQuestions - 1, session.currentQuestionIndex + 1))
-            }
-            disabled={session.currentQuestionIndex >= session.quiz.totalQuestions - 1 || isMovingToNext}
-            aria-label="Next question"
-          >
-            <ChevronRight className="h-5 w-5" />
+            {isSubmittingQuiz ? (
+              <>
+                <Loader2 className="h-5 w-5 mr-2 animate-spin" />
+                Submitting...
+              </>
+            ) : (
+              <>{isConfirmingSubmit ? "Submit Anyway" : "Submit Quiz"}</>
+            )}
           </Button>
         </div>
       </div>
