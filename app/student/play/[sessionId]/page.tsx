@@ -404,6 +404,16 @@ export default function StudentPlayPage() {
     return () => clearInterval(interval);
   }, [session]);
 
+  // When all questions are answered, reset confirmation state
+  useEffect(() => {
+    if (!session?.quiz.questions) return;
+    const total = session.quiz.questions.length;
+    if (total > 0 && questionSubmissions.size >= total) {
+      setIsConfirmingSubmit(false);
+      setUnansweredQuestions([]);
+    }
+  }, [session?.quiz.questions, questionSubmissions]);
+
   // Join session
   const joinSession = async () => {
     setIsJoining(true);
@@ -969,18 +979,6 @@ export default function StudentPlayPage() {
             className={`h-2 ${timeRemaining <= 60 ? "[&>div]:bg-red-500" : ""}`}
           />
 
-          {/* Unanswered questions warning (shown after first submit click) */}
-          {isConfirmingSubmit && unansweredQuestions.length > 0 && (
-            <div className="mt-4 p-4 border border-amber-500/40 bg-amber-500/10 rounded-lg text-sm text-amber-800 dark:text-amber-200">
-              <p className="font-semibold mb-1">Warning: Unanswered questions</p>
-              <p className="text-xs sm:text-sm">
-                These questions are unanswered: {unansweredQuestions.join(", ")}. Tap
-                <span className="font-semibold"> Submit Quiz</span> again to submit
-                anyway.
-              </p>
-            </div>
-          )}
-
           {/* Question list - all questions scrollable */}
           <div className="space-y-4">
             {session.quiz.questions?.map((question, qIndex) => {
@@ -1059,7 +1057,7 @@ export default function StudentPlayPage() {
                   </p>
                   <Button
                     size="lg"
-                    className="w-full cursor-pointer transition-all hover:scale-[1.02] active:scale-[0.98]"
+                    className="w-full h-16 cursor-pointer transition-all hover:scale-[1.02] active:scale-[0.98]"
                     onClick={handleSubmitQuiz}
                     disabled={isSubmittingQuiz}
                   >
@@ -1071,7 +1069,7 @@ export default function StudentPlayPage() {
                     ) : (
                       <>
                         <PartyPopper className="h-4 w-4 mr-2" />
-                        {isConfirmingSubmit ? "Submit Anyway" : "Submit Quiz"}
+                        Submit Quiz
                       </>
                     )}
                   </Button>
@@ -1080,24 +1078,36 @@ export default function StudentPlayPage() {
             </Card>
           )}
 
-          {/* Desktop Submit button (even if there are unanswered questions) */}
-          <div className="hidden sm:flex justify-end mt-4">
-            <Button
-              size="lg"
-              className="min-w-[180px]"
-              onClick={handleSubmitQuiz}
-              disabled={isSubmittingQuiz || questionSubmissions.size === 0}
-            >
-              {isSubmittingQuiz ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Submitting...
-                </>
-              ) : (
-                <>{isConfirmingSubmit ? "Submit Anyway" : "Submit Quiz"}</>
+          {/* Desktop Submit block (always full-width, handles unanswered confirmation) */}
+          {questionSubmissions.size < session.quiz.totalQuestions && (
+            <div className="hidden sm:flex flex-col gap-2 mt-4">
+              {isConfirmingSubmit && unansweredQuestions.length > 0 && (
+                <div className="p-4 border border-amber-500/40 bg-amber-500/10 rounded-lg text-sm text-amber-800 dark:text-amber-200">
+                  <p className="font-semibold mb-1">Warning: Unanswered questions</p>
+                  <p className="text-xs sm:text-sm">
+                    These questions are unanswered: {unansweredQuestions.join(", ")}. Tap{" "}
+                    <span className="font-semibold">Submit Anyway</span> to submit
+                    without answering them.
+                  </p>
+                </div>
               )}
-            </Button>
-          </div>
+              <Button
+                size="lg"
+                className="w-full h-16"
+                onClick={handleSubmitQuiz}
+                disabled={isSubmittingQuiz || questionSubmissions.size === 0}
+              >
+                {isSubmittingQuiz ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Submitting...
+                  </>
+                ) : (
+                  <>{isConfirmingSubmit ? "Submit Anyway" : "Submit Quiz"}</>
+                )}
+              </Button>
+            </div>
+          )}
         </div>
       </div>
 
@@ -1111,7 +1121,7 @@ export default function StudentPlayPage() {
         <div className="max-w-6xl mx-auto p-3 flex items-center gap-2">
           <Button
             size="lg"
-            className="h-12 flex-1"
+            className="h-16 flex-1"
             onClick={handleSubmitQuiz}
             disabled={isSubmittingQuiz || questionSubmissions.size === 0}
           >
