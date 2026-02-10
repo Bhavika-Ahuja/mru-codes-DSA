@@ -17,6 +17,7 @@ import {
   GripVertical,
   AlertCircle,
   Shuffle,
+  Clock,
 } from "lucide-react";
 import toast from "react-hot-toast";
 
@@ -917,6 +918,52 @@ export default function CreateQuizPage() {
                     <div>
                       <p className="text-sm text-muted-foreground">Questions</p>
                       <p className="font-semibold">{questions.length}</p>
+                    </div>
+                  </div>
+
+                  {/* Time Limit & Location - editable in review */}
+                  <div className="flex flex-wrap items-center gap-6 pt-4 mt-4 border-t border-border/50">
+                    <div className="flex items-center gap-3">
+                      <Clock className="h-4 w-4 text-muted-foreground" />
+                      <div className="space-y-1">
+                        <Label htmlFor="review-timeLimit" className="text-sm text-muted-foreground">
+                          Time Limit (minutes)
+                        </Label>
+                        <Input
+                          id="review-timeLimit"
+                          type="number"
+                          min={1}
+                          max={60}
+                          step={1}
+                          className="h-9 w-24"
+                          value={timeLimitMinutes}
+                          onChange={(e) => {
+                            const minutes = Math.min(60, Math.max(1, parseFloat(e.target.value) || 15));
+                            const seconds = Math.round(minutes * 60);
+                            setValue("timeLimit", seconds, { shouldValidate: true });
+                            setQuizData((prev) => prev ? { ...prev, timeLimit: seconds } : null);
+                          }}
+                        />
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <MapPin className="h-4 w-4 text-muted-foreground" />
+                      <div className="flex items-center gap-2">
+                        <Label htmlFor="review-geolocation" className="text-sm text-muted-foreground whitespace-nowrap">
+                          Require campus location
+                        </Label>
+                        <Switch
+                          id="review-geolocation"
+                          checked={watch("geolocationEnabled")}
+                          onCheckedChange={(checked) => {
+                            setValue("geolocationEnabled", checked);
+                            setQuizData((prev) => prev ? { ...prev, geolocationEnabled: checked } : null);
+                          }}
+                        />
+                        <span className="text-sm text-muted-foreground">
+                          {watch("geolocationEnabled") ? "On" : "Off"}
+                        </span>
+                      </div>
                     </div>
                   </div>
 
