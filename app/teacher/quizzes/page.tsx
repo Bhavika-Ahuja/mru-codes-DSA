@@ -400,7 +400,12 @@ export default function TeacherQuizzesPage() {
                   {/* Quiz Info */}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1 flex-wrap">
-                      <h3 className="font-semibold truncate">{quiz.title}</h3>
+                      <Link
+                        href={`/teacher/quizzes/${quiz.id}`}
+                        className="font-semibold truncate hover:underline text-primary underline-offset-2 focus:outline-none focus:ring-2 focus:ring-ring rounded"
+                      >
+                        {quiz.title}
+                      </Link>
                       <Badge
                         variant="outline"
                         className={getStatusColor(quiz.status)}
