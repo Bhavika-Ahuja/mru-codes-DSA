@@ -252,7 +252,7 @@ export default function TeacherSessionPage() {
   // Add time to the session
   const addTime = async (seconds: number) => {
     if (isActionLoading) return; // Prevent multiple simultaneous requests
-    
+
     setIsActionLoading(true);
     try {
       const response = await fetch(`/api/sessions/${sessionId}/add-time`, {
@@ -268,10 +268,10 @@ export default function TeacherSessionPage() {
       }
 
       toast.success(`Added ${Math.floor(seconds / 60)} minute(s) to the quiz!`);
-      
+
       // Optimistically update timeRemaining immediately for instant feedback
       setTimeRemaining(prev => Math.max(0, prev + seconds));
-      
+
       // Refetch session to get updated startedAt (in background)
       fetchSession().catch(err => console.error("Error refetching session:", err));
     } catch (error) {
@@ -314,6 +314,30 @@ export default function TeacherSessionPage() {
 
   const currentQuestion =
     session.status === "live" && session.quiz.questions[session.currentQuestionIndex];
+
+  // Live quiz aggregate stats
+  const totalParticipants = session.participants.length;
+  const totalQuestions = session.quiz.totalQuestions || 0;
+  const totalAnswered = session.participants.reduce(
+    (sum, p) => sum + (p.questionsAnswered ?? 0),
+    0
+  );
+  const totalPossibleAnswers =
+    totalParticipants > 0 && totalQuestions > 0
+      ? totalParticipants * totalQuestions
+      : 0;
+  const avgCompletion =
+    totalPossibleAnswers > 0
+      ? Math.round((totalAnswered / totalPossibleAnswers) * 100)
+      : 0;
+  const totalScoreSum = session.participants.reduce(
+    (sum, p) => sum + (p.score ?? 0),
+    0
+  );
+  const avgScore =
+    totalParticipants > 0
+      ? Math.round((totalScoreSum / totalParticipants) * 10) / 10
+      : 0;
 
   return (
     <div className="max-w-6xl mx-auto space-y-6">
@@ -426,13 +450,17 @@ export default function TeacherSessionPage() {
 
               {session.status === "live" && currentQuestion && (
                 <div className="space-y-6">
-                  {/* Timer and progress */}
+                  {/* Quiz info + timer */}
                   <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <Badge variant="outline" className="text-lg px-3 py-1">
-                        Question {session.currentQuestionIndex + 1} /{" "}
-                        {session.quiz.totalQuestions}
+                    <div className="flex flex-col gap-1">
+                      <Badge variant="outline" className="text-sm px-3 py-1 w-fit">
+                        {session.quiz.title}
                       </Badge>
+                      <p className="text-xs text-muted-foreground">
+                        {session.quiz.topic} • {session.quiz.difficulty} •{" "}
+                        {session.quiz.totalQuestions} question
+                        {session.quiz.totalQuestions === 1 ? "" : "s"}
+                      </p>
                     </div>
                     <div className="flex items-center gap-3">
                       <div className="flex items-center gap-2">
@@ -461,7 +489,7 @@ export default function TeacherSessionPage() {
                         className="gap-2 cursor-pointer transition-all hover:scale-105 active:scale-95"
                       >
                         <Clock className="h-4 w-4" />
-                        +1 min
+                        Add +1 min
                       </Button>
                     </div>
                   </div>
@@ -473,29 +501,31 @@ export default function TeacherSessionPage() {
                     className="h-2"
                   />
 
-                  {/* Question display */}
-                  <div className="p-6 bg-muted/50 rounded-xl">
-                    <p className="text-lg font-medium mb-6">
-                      {currentQuestion.questionText}
-                    </p>
-                    <div className="grid gap-3">
-                      {currentQuestion.options.map((option, index) => (
-                        <div
-                          key={option.id}
-                          className={`flex items-center gap-3 p-4 rounded-lg border ${option.is_correct
-                            ? "border-green-500 bg-green-500/5"
-                            : "border-border"
-                            }`}
-                        >
-                          <span className="w-8 h-8 rounded-lg bg-background flex items-center justify-center text-sm font-medium">
-                            {String.fromCharCode(65 + index)}
-                          </span>
-                          <span className="flex-1">{option.text}</span>
-                          {option.is_correct && (
-                            <Check className="h-5 w-5 text-green-500" />
-                          )}
-                        </div>
-                      ))}
+                  {/* Live quiz stats */}
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm">
+                    <div className="p-3 rounded-lg bg-muted/50 border border-border/60">
+                      <p className="text-xs text-muted-foreground mb-1">
+                        Students joined
+                      </p>
+                      <p className="text-lg font-semibold">
+                        {totalParticipants}
+                      </p>
+                    </div>
+                    <div className="p-3 rounded-lg bg-muted/50 border border-border/60">
+                      <p className="text-xs text-muted-foreground mb-1">
+                        Avg. completion
+                      </p>
+                      <p className="text-lg font-semibold">
+                        {avgCompletion}%
+                      </p>
+                    </div>
+                    <div className="p-3 rounded-lg bg-muted/50 border border-border/60">
+                      <p className="text-xs text-muted-foreground mb-1">
+                        Avg. score (live)
+                      </p>
+                      <p className="text-lg font-semibold">
+                        {avgScore}
+                      </p>
                     </div>
                   </div>
 

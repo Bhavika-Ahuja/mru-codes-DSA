@@ -70,7 +70,33 @@ export async function POST(request: Request) {
       );
     }
 
-    // Generate unique room code
+    // Reuse existing active session for this quiz & teacher if one exists
+    const existingActiveSession = await prisma.quizSession.findFirst({
+      where: {
+        quizId,
+        hostId: profile.id,
+        status: { in: ["waiting", "live"] },
+      },
+      orderBy: { createdAt: "desc" },
+    });
+
+    if (existingActiveSession) {
+      return NextResponse.json({
+        success: true,
+        session: {
+          id: existingActiveSession.id,
+          roomCode: existingActiveSession.roomCode,
+          status: existingActiveSession.status,
+        },
+        quiz: {
+          id: quiz.id,
+          title: quiz.title,
+          questionCount: quiz.questions.length,
+        },
+      });
+    }
+
+    // Generate unique room code for a brand new session
     let roomCode = generateRoomCode();
     let attempts = 0;
     while (attempts < 10) {
