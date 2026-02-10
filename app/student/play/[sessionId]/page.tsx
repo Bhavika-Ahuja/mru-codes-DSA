@@ -343,6 +343,19 @@ export default function StudentPlayPage() {
         fetchSession();
         toast.success(`Quiz time extended by ${Math.floor((payload.payload.seconds_added as number) / 60)} minute(s)!`);
       })
+      .on("broadcast", { event: "pause_state_change" }, (payload) => {
+        const isPaused = Boolean((payload.payload as { is_paused?: unknown }).is_paused);
+        fetchSession();
+        if (isPaused) {
+          toast("Quiz timer has been paused by your teacher.", {
+            icon: "⏸️",
+          });
+        } else {
+          toast("Quiz timer has been resumed.", {
+            icon: "▶️",
+          });
+        }
+      })
       .subscribe();
 
     return () => {

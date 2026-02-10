@@ -219,6 +219,19 @@ export default function TeacherSessionPage() {
             started_at: data.session.questionStartedAt,
           }
         );
+      } else if (action === "pause" || action === "resume") {
+        const channel = supabase.channel(`quiz-session-${sessionId}`);
+        await channel.subscribe();
+        await (channel.httpSend as (
+          event: string,
+          payload: Record<string, unknown>,
+          opts?: { timeout?: number }
+        ) => Promise<unknown>)(
+          "pause_state_change",
+          {
+            is_paused: action === "pause",
+          }
+        );
       }
 
       if (action === "end" || data.session.status === "completed") {
