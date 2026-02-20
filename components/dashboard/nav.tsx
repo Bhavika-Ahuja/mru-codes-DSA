@@ -17,6 +17,7 @@ import {
   Clock,
   FileSpreadsheet,
   Code2,
+  Award,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -36,6 +37,7 @@ const teacherNav = [
   { href: "/teacher/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/teacher/quizzes", label: "My Quizzes", icon: Zap },
   { href: "/teacher/quizzes/create", label: "Create Quiz", icon: PlusCircle },
+  { href: "/teacher/quiz-marks", label: "Quiz Marks", icon: Award },
   { href: "/teacher/question-bank", label: "Question Bank", icon: Database },
   { href: "/teacher/ide", label: "IDE", icon: Code2 },
   { href: "/teacher/cheating-detection", label: "Cheating Detection", icon: Shield },

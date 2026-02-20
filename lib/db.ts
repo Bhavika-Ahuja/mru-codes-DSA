@@ -154,7 +154,7 @@ export async function addQuestionToQuiz(data: {
       quizId: data.quizId,
       questionText: data.questionText,
       questionType: data.questionType || "mcq",
-      points: data.points || 10,
+      points: data.points || 1, // Default to 1 mark per correct answer
       timeLimit: data.timeLimit,
       orderIndex: data.orderIndex || 0,
       options: data.options,

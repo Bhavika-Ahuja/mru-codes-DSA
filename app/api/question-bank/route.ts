@@ -190,7 +190,7 @@ export async function POST(request: Request) {
         quizId: questionBankQuiz.id,
         questionText,
         questionType: "mcq",
-        points: 10,
+        points: 1, // 1 mark per correct answer
         orderIndex: nextOrderIndex,
         options: options,
         explanation: explanation || null,

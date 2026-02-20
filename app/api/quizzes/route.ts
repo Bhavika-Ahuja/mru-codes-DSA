@@ -81,7 +81,7 @@ export async function POST(request: Request) {
           quizId: createdQuiz.id,
           questionText: q.questionText,
           questionType: "mcq" as const,
-          points: 10, // Default points
+          points: 1, // 1 mark per correct answer
           orderIndex: q.orderIndex,
           options: q.options,
           explanation: q.explanation || null,
