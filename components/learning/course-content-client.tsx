@@ -13,7 +13,6 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ContentViewer } from "@/components/learning/content-viewer";
 import { ProgressTracker } from "@/components/learning/progress-tracker";
-import { toast } from "sonner";
 
 interface LearningContent {
   id: string;
