@@ -38,6 +38,7 @@ const teacherNav = [
   { href: "/teacher/quizzes", label: "My Quizzes", icon: Zap },
   { href: "/teacher/quizzes/create", label: "Create Quiz", icon: PlusCircle },
   { href: "/teacher/quiz-marks", label: "Quiz Marks", icon: Award },
+  { href: "/teacher/learn-content", label: "Upload Content", icon: BookOpen },
   { href: "/teacher/question-bank", label: "Question Bank", icon: Database },
   { href: "/teacher/ide", label: "IDE", icon: Code2 },
   { href: "/teacher/cheating-detection", label: "Cheating Detection", icon: Shield },

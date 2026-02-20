@@ -54,6 +54,20 @@ enum SubmissionStatus {
   returned
 }
 
+enum ContentType {
+  pdf
+  ppt
+  video
+  document
+  other
+}
+
+enum CourseStatus {
+  draft
+  published
+  archived
+}
+
 // ============================================================
 // MODELS
 // ============================================================
@@ -81,6 +95,8 @@ model Profile {
   submissions           Submission[]
   assignmentsCreated    Assignment[]           @relation("AssignmentCreator")
   assignmentSubmissions AssignmentSubmission[]
+  learningContentCreated LearningContent[]     @relation("ContentCreator")
+  contentProgress       ContentProgress[]
 
   @@index([department])
   @@index([section])
@@ -245,6 +261,77 @@ model Assignment {
   @@index([dueDate])
   @@index([topic])
   @@map("assignments")
+}
+
+/// Course/Topic for learning content
+model Course {
+  id          String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  title       String
+  description String?
+  slug        String       @unique
+  icon        String?      // Emoji or icon identifier
+  orderIndex  Int          @default(0) @map("order_index")
+  status      CourseStatus @default(draft)
+  createdAt   DateTime     @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt   DateTime     @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  // Relations
+  content LearningContent[]
+
+  @@index([status])
+  @@index([slug])
+  @@index([orderIndex])
+  @@map("courses")
+}
+
+/// Learning content (PDF, PPT, videos, etc.) - URLs/links provided by teachers
+model LearningContent {
+  id          String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  courseId    String      @map("course_id") @db.Uuid
+  title       String
+  description String?
+  contentType ContentType @map("content_type")
+  contentUrl  String      @map("content_url") // URL/link to content (Google Drive, YouTube, etc.)
+  fileName    String?     @map("file_name") // Optional: name of the resource
+  orderIndex  Int         @default(0) @map("order_index")
+  duration    Int?        // Duration in seconds (for videos)
+  thumbnailUrl String?    @map("thumbnail_url") // For videos
+  createdById String      @map("created_by") @db.Uuid
+  createdAt   DateTime   @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt   DateTime   @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  // Relations
+  course    Course  @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  createdBy Profile @relation("ContentCreator", fields: [createdById], references: [id], onDelete: Cascade)
+  progress  ContentProgress[]
+
+  @@index([courseId])
+  @@index([courseId, orderIndex])
+  @@index([createdById])
+  @@index([contentType])
+  @@map("learning_content")
+}
+
+/// Student progress tracking for learning content
+model ContentProgress {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  contentId   String   @map("content_id") @db.Uuid
+  studentId   String   @map("student_id") @db.Uuid
+  isCompleted Boolean  @default(false) @map("is_completed")
+  viewedAt    DateTime? @map("viewed_at") @db.Timestamptz
+  completedAt DateTime? @map("completed_at") @db.Timestamptz
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt   DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  // Relations
+  content LearningContent @relation(fields: [contentId], references: [id], onDelete: Cascade)
+  student Profile         @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([contentId, studentId])
+  @@index([studentId])
+  @@index([contentId])
+  @@index([studentId, isCompleted])
+  @@map("content_progress")
 }
 
 /// Student submission for an assignment
