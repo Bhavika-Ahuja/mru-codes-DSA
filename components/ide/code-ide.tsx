@@ -3,7 +3,7 @@
 import { useCallback, useState, useEffect } from "react";
 import dynamic from "next/dynamic";
 import { useTheme } from "next-themes";
-import { Play, Loader2, ChevronDown, ChevronUp, Terminal, Code2, RotateCcw } from "lucide-react";
+import { Play, Loader2, ChevronDown, ChevronUp, Terminal, Code2, RotateCcw, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -104,6 +104,21 @@ export function CodeIde() {
     setStdin("");
   }, [language]);
 
+  const handleSaveLocally = useCallback(() => {
+    const ext = language === "cpp" ? "cpp" : "c";
+    const filename = `main.${ext}`;
+    const blob = new Blob([code], { type: "text/plain;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    toast.success(`Saved as ${filename}`);
+  }, [language, code]);
+
   const handleLanguageChange = (l: Lang) => {
     setLanguage(l);
     setCode(SAMPLES[l]);
@@ -157,6 +172,10 @@ export function CodeIde() {
         <Button variant="outline" size="sm" onClick={handleReset} className="gap-2">
           <RotateCcw className="h-4 w-4" />
           Reset
+        </Button>
+        <Button variant="outline" size="sm" onClick={handleSaveLocally} className="gap-2" title="Save as .c / .cpp file">
+          <Download className="h-4 w-4" />
+          Save as file
         </Button>
         <Button
           variant="ghost"

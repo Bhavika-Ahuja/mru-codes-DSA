@@ -68,6 +68,21 @@ enum CourseStatus {
   archived
 }
 
+enum ContestStatus {
+  draft
+  scheduled
+  live
+  ended
+}
+
+enum ContestSubmissionStatus {
+  pending
+  accepted
+  wrong_answer
+  compile_error
+  runtime_error
+}
+
 // ============================================================
 // MODELS
 // ============================================================
@@ -97,6 +112,11 @@ model Profile {
   assignmentSubmissions AssignmentSubmission[]
   learningContentCreated LearningContent[]     @relation("ContentCreator")
   contentProgress       ContentProgress[]
+  examPapersCreated     ExamPaper[]           @relation("ExamPaperCreator")
+  portfolioProjects     PortfolioProject[]
+  codingProblemsCreated CodingProblem[]
+  contestsCreated       Contest[]
+  contestSubmissions    ContestSubmission[]
 
   @@index([department])
   @@index([section])
@@ -332,6 +352,147 @@ model ContentProgress {
   @@index([contentId])
   @@index([studentId, isCompleted])
   @@map("content_progress")
+}
+
+/// Previous exam papers stored by teachers, viewable by students
+model ExamPaper {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  title       String
+  description String?
+  subject     String   // e.g. "DSA", "Data Structures"
+  year        Int?     // e.g. 2023
+  semester    String?  // e.g. "Fall", "Spring"
+  fileUrl     String   @map("file_url") // URL to PDF (Supabase storage or external link)
+  fileName    String   @map("file_name")
+  createdById String   @map("created_by") @db.Uuid
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt   DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  createdBy Profile @relation("ExamPaperCreator", fields: [createdById], references: [id], onDelete: Cascade)
+
+  @@index([createdById])
+  @@index([subject])
+  @@index([year])
+  @@map("exam_papers")
+}
+
+/// E-portfolio: CS projects uploaded by students, viewable by teachers
+model PortfolioProject {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  title       String
+  description String?
+  projectUrl  String   @map("project_url")   // GitHub, live demo, or document link
+  techStack   String?  @map("tech_stack")    // e.g. "React, Node.js"
+  thumbnailUrl String? @map("thumbnail_url")
+  studentId   String   @map("student_id") @db.Uuid
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt   DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  student Profile @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@index([studentId])
+  @@map("portfolio_projects")
+}
+
+/// Coding problem (LeetCode-style) for contests
+model CodingProblem {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  title       String
+  slug        String   @unique
+  description String   @db.Text
+  difficulty  DifficultyLevel @default(medium)
+  timeLimitMs Int      @default(2000) @map("time_limit_ms")
+  createdById String   @map("created_by") @db.Uuid
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt   DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  createdBy     Profile         @relation(fields: [createdById], references: [id], onDelete: Cascade)
+  testCases     ProblemTestCase[]
+  contestProblems ContestProblem[]
+  submissions   ContestSubmission[]
+
+  @@index([createdById])
+  @@index([slug])
+  @@map("coding_problems")
+}
+
+/// Test case for a coding problem (input + expected output)
+model ProblemTestCase {
+  id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  problemId     String   @map("problem_id") @db.Uuid
+  input         String   @db.Text
+  expectedOutput String  @map("expected_output") @db.Text
+  isSample      Boolean  @default(false) @map("is_sample")
+  orderIndex    Int      @default(0) @map("order_index")
+
+  problem CodingProblem @relation(fields: [problemId], references: [id], onDelete: Cascade)
+
+  @@index([problemId])
+  @@map("problem_test_cases")
+}
+
+/// Coding contest (LeetCode-style)
+model Contest {
+  id          String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  title       String
+  description String?       @db.Text
+  startAt     DateTime      @map("start_at") @db.Timestamptz
+  endAt       DateTime      @map("end_at") @db.Timestamptz
+  status      ContestStatus @default(draft)
+  createdById String        @map("created_by") @db.Uuid
+  createdAt   DateTime      @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt   DateTime      @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  createdBy   Profile             @relation(fields: [createdById], references: [id], onDelete: Cascade)
+  problems    ContestProblem[]
+  submissions ContestSubmission[]
+
+  @@index([createdById])
+  @@index([status])
+  @@index([startAt])
+  @@map("contests")
+}
+
+/// Problem included in a contest (with points and order)
+model ContestProblem {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  contestId  String   @map("contest_id") @db.Uuid
+  problemId  String   @map("problem_id") @db.Uuid
+  orderIndex Int      @default(0) @map("order_index")
+  points     Int      @default(100)
+
+  contest Contest        @relation(fields: [contestId], references: [id], onDelete: Cascade)
+  problem CodingProblem  @relation(fields: [problemId], references: [id], onDelete: Cascade)
+
+  @@unique([contestId, problemId])
+  @@index([contestId])
+  @@index([problemId])
+  @@map("contest_problems")
+}
+
+/// User submission for a problem in a contest
+model ContestSubmission {
+  id             String                 @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  contestId      String                 @map("contest_id") @db.Uuid
+  problemId      String                 @map("problem_id") @db.Uuid
+  userId         String                 @map("user_id") @db.Uuid
+  code           String                 @db.Text
+  language       String                 @default("cpp")
+  status         ContestSubmissionStatus @default(pending)
+  score          Int                    @default(0)
+  passedTests    Int                    @default(0) @map("passed_tests")
+  totalTests     Int                    @default(0) @map("total_tests")
+  submittedAt    DateTime               @default(now()) @map("submitted_at") @db.Timestamptz
+
+  contest Contest       @relation(fields: [contestId], references: [id], onDelete: Cascade)
+  problem CodingProblem @relation(fields: [problemId], references: [id], onDelete: Cascade)
+  user    Profile       @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([contestId])
+  @@index([problemId])
+  @@index([userId])
+  @@index([contestId, userId])
+  @@map("contest_submissions")
 }
 
 /// Student submission for an assignment
