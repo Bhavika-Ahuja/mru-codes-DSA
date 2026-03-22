@@ -85,29 +85,28 @@ export async function POST(request: NextRequest) {
     const arrayBuffer = await file.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
 
-    // Upload to Supabase Storage using admin client (bypasses RLS)
-    const bucketName = "Assignments";
-    
-    // Check if bucket exists, create if it doesn't (with error handling)
+    // Supabase Storage bucket IDs must be lowercase (letters, numbers, hyphens).
+    // Using "Assignments" breaks API validation and can yield: "The string did not match the expected pattern".
+    // Resolve an existing bucket case-insensitively, or create "assignments".
     const { data: buckets, error: bucketsError } = await supabaseAdmin.storage.listBuckets();
-    
+
     if (bucketsError) {
       console.error("Error listing buckets:", bucketsError);
-      // Continue anyway - bucket might exist but we can't list it
-    } else {
-      const bucketExists = buckets?.some(b => b.id === bucketName);
-      if (!bucketExists) {
-        // Try to create the bucket
-        const { error: createError } = await supabaseAdmin.storage.createBucket(bucketName, {
-          public: true,
-          allowedMimeTypes: ["application/pdf"],
-          fileSizeLimit: 10485760, // 10MB
-        });
-        
-        if (createError) {
-          console.error("Error creating bucket:", createError);
-          // Continue anyway - might already exist or have permission issues
-        }
+    }
+
+    const bucketName =
+      buckets?.find((b) => b.id.toLowerCase() === "assignments")?.id ?? "assignments";
+
+    const bucketExists = buckets?.some((b) => b.id === bucketName);
+    if (!bucketExists) {
+      const { error: createError } = await supabaseAdmin.storage.createBucket(bucketName, {
+        public: true,
+        allowedMimeTypes: ["application/pdf"],
+        fileSizeLimit: 10485760, // 10MB
+      });
+
+      if (createError) {
+        console.error("Error creating bucket:", createError);
       }
     }
 
@@ -121,11 +120,25 @@ export async function POST(request: NextRequest) {
 
     if (uploadError) {
       console.error("Error uploading file:", uploadError);
-      
-      // Provide more specific error messages
-      if (uploadError.message?.includes("Bucket not found")) {
+
+      const msg = uploadError.message ?? "";
+      if (msg.includes("did not match the expected pattern")) {
         return NextResponse.json(
-          { error: "Storage bucket not found. Please contact administrator to set up the 'Assignments' bucket in Supabase Storage." },
+          {
+            error:
+              "Storage bucket name is invalid. Use a lowercase bucket named \"assignments\" in Supabase Storage, or ensure your bucket id matches (letters, numbers, hyphens only).",
+          },
+          { status: 500 }
+        );
+      }
+
+      // Provide more specific error messages
+      if (msg.includes("Bucket not found")) {
+        return NextResponse.json(
+          {
+            error:
+              "Storage bucket not found. In Supabase Dashboard → Storage, create a public bucket named \"assignments\" (lowercase).",
+          },
           { status: 500 }
         );
       }
