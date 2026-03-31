@@ -7,7 +7,6 @@ import {
   Calendar,
   Users,
   ArrowLeft,
-  Edit,
   ExternalLink,
   CheckCircle2,
   Clock,
@@ -22,6 +21,8 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { formatDepartmentSection } from "@/lib/departments";
+import { EditTargetClassDialog } from "./edit-target-class-dialog";
 
 function getStatusBadge(status: string) {
   switch (status) {
@@ -123,6 +124,11 @@ export default async function AssignmentDetailPage({
           </div>
         </div>
         <div className="flex items-center gap-2">
+          <EditTargetClassDialog
+            assignmentId={assignment.id}
+            targetDepartment={assignment.targetDepartment}
+            targetSection={assignment.targetSection}
+          />
           {getStatusBadge(assignment.status)}
         </div>
       </div>
@@ -184,6 +190,18 @@ export default async function AssignmentDetailPage({
                     Due Date
                   </p>
                   <p className="text-base">{formatDate(assignment.dueDate)}</p>
+                </div>
+
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground mb-1">
+                    Target Class
+                  </p>
+                  <Badge variant="outline">
+                    {formatDepartmentSection(
+                      assignment.targetDepartment,
+                      assignment.targetSection
+                    )}
+                  </Badge>
                 </div>
               </div>
 

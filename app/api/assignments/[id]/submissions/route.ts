@@ -2,6 +2,28 @@ import { NextRequest, NextResponse } from "next/server";
 import { getProfile } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
 
+function hasClassAccess(
+  assignment: { targetDepartment: string | null; targetSection: string | null },
+  profile: { department: string | null; section: string | null }
+) {
+  if (!assignment.targetDepartment) {
+    return true;
+  }
+
+  const studentDepartment = profile.department?.trim() || null;
+  const studentSection = profile.section?.trim() || null;
+
+  if (!studentDepartment || studentDepartment !== assignment.targetDepartment) {
+    return false;
+  }
+
+  if (!assignment.targetSection) {
+    return true;
+  }
+
+  return studentSection === assignment.targetSection;
+}
+
 // GET /api/assignments/[id]/submissions - Get all submissions for an assignment (teacher only)
 export async function GET(
   request: NextRequest,
@@ -81,6 +103,13 @@ export async function POST(
     if (assignment.status !== "published") {
       return NextResponse.json(
         { error: "This assignment is not available for submission" },
+        { status: 403 }
+      );
+    }
+
+    if (!hasClassAccess(assignment, profile)) {
+      return NextResponse.json(
+        { error: "This assignment is not available for your class" },
         { status: 403 }
       );
     }

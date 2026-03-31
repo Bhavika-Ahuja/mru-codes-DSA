@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getProfile } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
 import { AssignmentStatus } from "@prisma/client";
+import { departmentRequiresSection, type Department } from "@/lib/departments";
 
 // GET /api/assignments - Get all assignments (for teachers) or published assignments (for students)
 export async function GET(request: NextRequest) {
@@ -16,10 +17,29 @@ export async function GET(request: NextRequest) {
     const forStudent = searchParams.get("forStudent") === "true";
 
     if (forStudent || profile.role === "student") {
+      const studentDepartment = profile.department?.trim() || null;
+      const studentSection = profile.section?.trim() || null;
+
       // Students can only see published assignments
       const assignments = await prisma.assignment.findMany({
         where: {
           status: (status as AssignmentStatus) || "published",
+          OR: [
+            {
+              targetDepartment: null,
+            },
+            ...(studentDepartment
+              ? [
+                  {
+                    targetDepartment: studentDepartment,
+                    OR: [
+                      { targetSection: null },
+                      ...(studentSection ? [{ targetSection: studentSection }] : []),
+                    ],
+                  },
+                ]
+              : []),
+          ],
         },
         include: {
           createdBy: {
@@ -91,11 +111,44 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { title, description, topic, difficulty, maxPoints, dueDate, pdfUrl, pdfFileName, status } = body;
+    const {
+      title,
+      description,
+      topic,
+      difficulty,
+      maxPoints,
+      dueDate,
+      pdfUrl,
+      pdfFileName,
+      status,
+      targetDepartment,
+      targetSection,
+    } = body;
 
-    if (!title || !pdfUrl) {
+    if (!title || !pdfUrl || !targetDepartment) {
       return NextResponse.json(
-        { error: "Title and PDF are required" },
+        { error: "Title, PDF, and target class are required" },
+        { status: 400 }
+      );
+    }
+
+    const normalizedDepartment =
+      typeof targetDepartment === "string" ? targetDepartment.trim() : "";
+    const normalizedSection =
+      typeof targetSection === "string" && targetSection.trim().length > 0
+        ? targetSection.trim()
+        : null;
+
+    if (!normalizedDepartment) {
+      return NextResponse.json(
+        { error: "Target department is required" },
+        { status: 400 }
+      );
+    }
+
+    if (departmentRequiresSection(normalizedDepartment as Department) && !normalizedSection) {
+      return NextResponse.json(
+        { error: "Target section is required for this department" },
         { status: 400 }
       );
     }
@@ -108,6 +161,10 @@ export async function POST(request: NextRequest) {
         difficulty: difficulty || "medium",
         maxPoints: maxPoints || 100,
         dueDate: dueDate ? new Date(dueDate) : null,
+        targetDepartment: normalizedDepartment,
+        targetSection: departmentRequiresSection(normalizedDepartment as Department)
+          ? normalizedSection
+          : null,
         pdfUrl,
         pdfFileName,
         createdById: profile.id,

@@ -13,6 +13,7 @@ import {
   FileX,
   Download,
   Star,
+  Sparkles,
 } from "lucide-react";
 import {
   Card,
@@ -99,6 +100,7 @@ export default function SubmissionsPage() {
   const assignmentId = params.id as string;
   const [loading, setLoading] = useState(true);
   const [grading, setGrading] = useState<string | null>(null);
+  const [aiGrading, setAiGrading] = useState<string | null>(null);
   const [assignment, setAssignment] = useState<Assignment | null>(null);
   const [submissions, setSubmissions] = useState<Submission[]>([]);
   const [selectedSubmission, setSelectedSubmission] = useState<Submission | null>(null);
@@ -171,6 +173,32 @@ export default function SubmissionsPage() {
       toast.error(error instanceof Error ? error.message : "Failed to grade submission");
     } finally {
       setGrading(null);
+    }
+  };
+
+  const handleAiGrade = async (submissionId: string) => {
+    try {
+      setAiGrading(submissionId);
+      const response = await fetch(`/api/submissions/${submissionId}/ai-grade`, {
+        method: "POST",
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Failed to grade submission with AI");
+      }
+
+      const data = await response.json();
+      toast.success(
+        `AI graded successfully: ${data.submission.grade}/${assignment?.maxPoints}`
+      );
+      fetchData();
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Failed to grade submission with AI"
+      );
+    } finally {
+      setAiGrading(null);
     }
   };
 
@@ -298,6 +326,25 @@ export default function SubmissionsPage() {
 
                   {submission.status === "submitted" && (
                     <div className="pt-4 border-t space-y-4">
+                      <Button
+                        variant="secondary"
+                        onClick={() => handleAiGrade(submission.id)}
+                        disabled={aiGrading === submission.id || grading === submission.id}
+                        size="sm"
+                      >
+                        {aiGrading === submission.id ? (
+                          <>
+                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                            AI Grading...
+                          </>
+                        ) : (
+                          <>
+                            <Sparkles className="h-4 w-4 mr-2" />
+                            AI Grade & Save
+                          </>
+                        )}
+                      </Button>
+
                       <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2">
                           <Label htmlFor={`grade-${submission.id}`}>
@@ -335,7 +382,11 @@ export default function SubmissionsPage() {
                       </div>
                       <Button
                         onClick={() => handleGrade(submission.id)}
-                        disabled={grading === submission.id || !grade}
+                        disabled={
+                          grading === submission.id ||
+                          aiGrading === submission.id ||
+                          !grade
+                        }
                         size="sm"
                       >
                         {grading === submission.id ? (

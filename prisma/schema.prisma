@@ -266,6 +266,8 @@ model Assignment {
   maxPoints   Int              @default(100) @map("max_points")
   dueDate     DateTime?        @map("due_date") @db.Timestamptz
   status      AssignmentStatus @default(draft)
+  targetDepartment String?     @map("target_department")
+  targetSection String?        @map("target_section")
   pdfUrl      String?          @map("pdf_url") // URL to PDF file in Supabase Storage
   pdfFileName String?          @map("pdf_file_name")
   createdById String           @map("created_by") @db.Uuid
@@ -278,6 +280,8 @@ model Assignment {
 
   @@index([status])
   @@index([createdById])
+  @@index([targetDepartment])
+  @@index([targetDepartment, targetSection])
   @@index([dueDate])
   @@index([topic])
   @@map("assignments")

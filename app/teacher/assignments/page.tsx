@@ -13,12 +13,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+  formatDepartmentSection,
+} from "@/lib/departments";
 
 async function getAssignments(teacherId: string) {
   try {
@@ -175,6 +171,16 @@ export default async function TeacherAssignmentsPage() {
                   <div className="flex items-center gap-1">
                     <FileText className="h-4 w-4" />
                     <span>{assignment.maxPoints} points</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <Users className="h-4 w-4" />
+                    <span>
+                      Class:{" "}
+                      {formatDepartmentSection(
+                        assignment.targetDepartment,
+                        assignment.targetSection
+                      )}
+                    </span>
                   </div>
                 </div>
                 <div className="flex gap-2">

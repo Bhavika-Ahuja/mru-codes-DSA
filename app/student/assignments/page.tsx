@@ -20,11 +20,34 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 
-async function getAssignments(studentId: string) {
+async function getAssignments(
+  studentId: string,
+  department: string | null,
+  section: string | null
+) {
   try {
+    const studentDepartment = department?.trim() || null;
+    const studentSection = section?.trim() || null;
+
     const assignments = await prisma.assignment.findMany({
       where: {
         status: "published",
+        OR: [
+          {
+            targetDepartment: null,
+          },
+          ...(studentDepartment
+            ? [
+                {
+                  targetDepartment: studentDepartment,
+                  OR: [
+                    { targetSection: null },
+                    ...(studentSection ? [{ targetSection: studentSection }] : []),
+                  ],
+                },
+              ]
+            : []),
+        ],
       },
       include: {
         createdBy: {
@@ -124,7 +147,11 @@ export default async function StudentAssignmentsPage() {
     redirect("/teacher/dashboard");
   }
 
-  const assignments = await getAssignments(profile.id);
+  const assignments = await getAssignments(
+    profile.id,
+    profile.department ?? null,
+    profile.section ?? null
+  );
 
   return (
     <div className="space-y-6">

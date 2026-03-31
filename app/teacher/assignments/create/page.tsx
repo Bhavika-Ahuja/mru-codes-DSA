@@ -34,16 +34,34 @@ import { Textarea } from "@/components/ui/textarea";
 import { FileUpload } from "@/components/ui/file-upload";
 import toast from "react-hot-toast";
 import Link from "next/link";
+import {
+  DEPARTMENT_OPTIONS,
+  SECTION_OPTIONS,
+  departmentRequiresSection,
+  type Department,
+} from "@/lib/departments";
 
-const assignmentSchema = z.object({
-  title: z.string().min(3, "Title must be at least 3 characters"),
-  description: z.string().optional(),
-  topic: z.string().optional(),
-  difficulty: z.enum(["easy", "medium", "hard"]).default("medium"),
-  maxPoints: z.number().min(1).max(1000).default(100),
-  dueDate: z.string().optional(),
-  status: z.enum(["draft", "published", "closed"]).default("draft"),
-});
+const assignmentSchema = z
+  .object({
+    title: z.string().min(3, "Title must be at least 3 characters"),
+    description: z.string().optional(),
+    topic: z.string().optional(),
+    difficulty: z.enum(["easy", "medium", "hard"]).default("medium"),
+    maxPoints: z.number().min(1).max(1000).default(100),
+    dueDate: z.string().optional(),
+    status: z.enum(["draft", "published", "closed"]).default("draft"),
+    targetDepartment: z.string().min(1, "Target department is required"),
+    targetSection: z.string().optional(),
+  })
+  .refine((data) => {
+    if (departmentRequiresSection(data.targetDepartment as Department)) {
+      return Boolean(data.targetSection && data.targetSection.trim().length > 0);
+    }
+    return true;
+  }, {
+    message: "Section is required for this department",
+    path: ["targetSection"],
+  });
 
 type AssignmentFormData = z.infer<typeof assignmentSchema>;
 
@@ -67,11 +85,14 @@ export default function CreateAssignmentPage() {
       difficulty: "medium",
       maxPoints: 100,
       status: "draft",
+      targetDepartment: "",
+      targetSection: "",
     },
   });
 
   const difficulty = watch("difficulty");
   const status = watch("status");
+  const targetDepartment = watch("targetDepartment");
 
   const handleFileSelect = async (file: File) => {
     setUploadError(null);
@@ -280,6 +301,71 @@ export default function CreateAssignmentPage() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="targetDepartment">
+                    Target Department <span className="text-destructive">*</span>
+                  </Label>
+                  <Select
+                    value={targetDepartment}
+                    onValueChange={(value) => {
+                      setValue("targetDepartment", value, { shouldValidate: true });
+                      if (!departmentRequiresSection(value as Department)) {
+                        setValue("targetSection", "", { shouldValidate: true });
+                      }
+                    }}
+                    disabled={isLoading}
+                  >
+                    <SelectTrigger id="targetDepartment">
+                      <SelectValue placeholder="Select department" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {DEPARTMENT_OPTIONS.map((department) => (
+                        <SelectItem key={department.value} value={department.value}>
+                          {department.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {errors.targetDepartment && (
+                    <p className="text-sm text-destructive">
+                      {errors.targetDepartment.message}
+                    </p>
+                  )}
+                </div>
+
+                {departmentRequiresSection(targetDepartment as Department) && (
+                  <div className="space-y-2">
+                    <Label htmlFor="targetSection">
+                      Target Section <span className="text-destructive">*</span>
+                    </Label>
+                    <Select
+                      value={watch("targetSection")}
+                      onValueChange={(value) =>
+                        setValue("targetSection", value, { shouldValidate: true })
+                      }
+                      disabled={isLoading}
+                    >
+                      <SelectTrigger id="targetSection">
+                        <SelectValue placeholder="Select section" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {SECTION_OPTIONS.map((section) => (
+                          <SelectItem key={section} value={section}>
+                            Section {section}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {errors.targetSection && (
+                      <p className="text-sm text-destructive">
+                        {errors.targetSection.message}
+                      </p>
+                    )}
+                  </div>
+                )}
+              </div>
+
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="maxPoints">Maximum Points</Label>
