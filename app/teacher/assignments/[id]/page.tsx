@@ -23,6 +23,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { formatDepartmentSection } from "@/lib/departments";
 import { EditTargetClassDialog } from "./edit-target-class-dialog";
+import { EditAssignmentScheduleDialog } from "./edit-assignment-schedule-dialog";
 
 function getStatusBadge(status: string) {
   switch (status) {
@@ -124,6 +125,10 @@ export default async function AssignmentDetailPage({
           </div>
         </div>
         <div className="flex items-center gap-2">
+          <EditAssignmentScheduleDialog
+            assignmentId={assignment.id}
+            dueDate={assignment.dueDate ? assignment.dueDate.toISOString() : null}
+          />
           <EditTargetClassDialog
             assignmentId={assignment.id}
             targetDepartment={assignment.targetDepartment}
