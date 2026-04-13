@@ -86,8 +86,13 @@ export default function StudentSettingsPage() {
     }
   }, [profile, reset]);
 
+  useEffect(() => {
+    if (!profile || profile.role !== "student") {
+      router.replace("/login");
+    }
+  }, [profile, router]);
+
   if (!profile || profile.role !== "student") {
-    router.push("/login");
     return null;
   }
 

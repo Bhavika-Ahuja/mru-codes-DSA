@@ -20,6 +20,7 @@ import {
   FolderGit2,
   Code2,
   Award,
+  MessageSquare,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -31,6 +32,7 @@ const studentNav = [
   { href: "/student/study-recommendations", label: "Study Tips", icon: Lightbulb },
   { href: "/student/quiz-history", label: "Quiz History", icon: Clock },
   { href: "/student/assignments", label: "Assignments", icon: FileText },
+  { href: "/student/discussions", label: "Discussions", icon: MessageSquare },
   { href: "/student/exam-papers", label: "Exam Papers", icon: ScrollText },
   { href: "/student/portfolio", label: "E-Portfolio", icon: FolderGit2 },
   { href: "/student/contests", label: "Contests", icon: Trophy },
@@ -52,6 +54,7 @@ const teacherNav = [
   { href: "/teacher/ide", label: "IDE", icon: Code2 },
   { href: "/teacher/cheating-detection", label: "Cheating Detection", icon: Shield },
   { href: "/teacher/assignments", label: "Assignments", icon: FileText },
+  { href: "/teacher/discussions", label: "Discussions", icon: MessageSquare },
   { href: "/teacher/performance", label: "Student Performance", icon: Users },
   { href: "/teacher/export-reports", label: "Export Reports", icon: FileSpreadsheet },
   { href: "/teacher/leaderboard", label: "Leaderboard", icon: Trophy },

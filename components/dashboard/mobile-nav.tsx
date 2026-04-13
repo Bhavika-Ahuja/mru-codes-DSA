@@ -19,6 +19,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Code2,
+  MessageSquare,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -30,6 +31,7 @@ const studentNav = [
   { href: "/student/study-recommendations", label: "Tips", icon: Lightbulb },
   { href: "/student/quiz-history", label: "History", icon: Clock },
   { href: "/student/assignments", label: "Tasks", icon: FileText },
+  { href: "/student/discussions", label: "Discuss", icon: MessageSquare },
   { href: "/student/performance", label: "Performance", icon: BarChart3 },
   { href: "/student/leaderboard", label: "Rank", icon: Trophy },
 ];
@@ -42,6 +44,7 @@ const teacherNav = [
   { href: "/teacher/ide", label: "IDE", icon: Code2 },
   { href: "/teacher/cheating-detection", label: "Security", icon: Shield },
   { href: "/teacher/assignments", label: "Tasks", icon: FileText },
+  { href: "/teacher/discussions", label: "Discuss", icon: MessageSquare },
   { href: "/teacher/performance", label: "Students", icon: Users },
   { href: "/teacher/export-reports", label: "Export", icon: FileSpreadsheet },
   { href: "/teacher/leaderboard", label: "Rank", icon: Trophy },
