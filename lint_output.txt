@@ -1,0 +1,1081 @@
+
+> dsa-dashboard-project@0.1.0 lint
+> eslint
+
+
+/Users/chiragluhach/Desktop/DSA-Dashboard/app/(dashboard)/dashboard/settings/page.tsx
+  69:7  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+/Users/chiragluhach/Desktop/DSA-Dashboard/app/(dashboard)/dashboard/settings/page.tsx:69:7
+  67 |         section: profile.section || "",
+  68 |       });
+> 69 |       setIsInitialLoading(false);
+     |       ^^^^^^^^^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  70 |     }
+  71 |   }, [profile, reset]);
+  72 |  react-hooks/set-state-in-effect
+
+/Users/chiragluhach/Desktop/DSA-Dashboard/app/api/analytics/student/route.ts
+  6:27  warning  'request' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/chiragluhach/Desktop/DSA-Dashboard/app/api/coding-problems/route.ts
+  20:27  warning  '_request' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/chiragluhach/Desktop/DSA-Dashboard/app/api/contests/route.ts
+  15:27  warning  'request' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/chiragluhach/Desktop/DSA-Dashboard/app/api/courses/seed/route.ts
+  6:28  warning  'request' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/chiragluhach/Desktop/DSA-Dashboard/app/api/exam-papers/route.ts
+  17:27  warning  'request' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/chiragluhach/Desktop/DSA-Dashboard/app/api/learning-content/progress/route.ts
+  74:21  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/chiragluhach/Desktop/DSA-Dashboard/app/api/portfolio/route.ts
+  15:27  warning  '_request' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/chiragluhach/Desktop/DSA-Dashboard/app/login/page.tsx
+  146:9  error  Error: This value cannot be modified
+
+Modifying a variable defined outside a component or hook is not allowed. Consider using an effect.
+
+/Users/chiragluhach/Desktop/DSA-Dashboard/app/login/page.tsx:146:9
+  144 |
+  145 |       if (typeof window !== "undefined") {
+> 146 |         window.location.href = dashboardPath;
+      |         ^^^^^^^^^^^^^^^ value cannot be modified
+  147 |       } else {
+  148 |         router.push(dashboardPath);
+  149 |         router.refresh();  react-hooks/immutability
+
+/Users/chiragluhach/Desktop/DSA-Dashboard/app/signup/page.tsx
+  109:24  warning  Compilation Skipped: Use of incompatible library
+
+This API returns functions which cannot be memoized without leading to stale UI. To prevent this, by default React Compiler will skip memoizing this component/hook. However, you may see issues if values from this API are passed to other components/hooks that are memoized.
+
+/Users/chiragluhach/Desktop/DSA-Dashboard/app/signup/page.tsx:109:24
+  107 |   });
+  108 |
+> 109 |   const selectedRole = watch("role");
+      |                        ^^^^^ React Hook Form's `useForm()` API returns a `watch()` function which cannot be memoized safely.
+  110 |   const selectedDepartment = watch("department");
+  111 |
+  112 |   const onSubmit = async (data: SignupFormData) => {  react-hooks/incompatible-library
+
+/Users/chiragluhach/Desktop/DSA-Dashboard/app/student/assignments/[id]/page.tsx
+   79:10  warning  'pdfFile' is assigned a value but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    @typescript-eslint/no-unused-vars
+   84:5   error    Error: Cannot access variable before it is declared
+
+`fetchAssignment` is accessed before it is declared, which prevents the earlier access from updating when this value changes over time.
+
+/Users/chiragluhach/Desktop/DSA-Dashboard/app/student/assignments/[id]/page.tsx:84:5
+  82 |
+  83 |   useEffect(() => {
+> 84 |     fetchAssignment();
+     |     ^^^^^^^^^^^^^^^ `fetchAssignment` accessed before it is declared
+  85 |   }, [assignmentId]);
+  86 |
+  87 |   const fetchAssignment = async () => {
+
+/Users/chiragluhach/Desktop/DSA-Dashboard/app/student/assignments/[id]/page.tsx:87:3
+   85 |   }, [assignmentId]);
+   86 |
+>  87 |   const fetchAssignment = async () => {
+      |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+>  88 |     try {
+      | ^^^^^^^^^
+>  89 |       setLoading(true);
+      …
+      | ^^^^^^^^^
+> 110 |     }
+      | ^^^^^^^^^
+> 111 |   };
+      | ^^^^^ `fetchAssignment` is declared here
+  112 |
+  113 |   const handleFileSelect = async (file: File) => {
+  114 |     setUploadError(null);  react-hooks/immutability
+   85:6   warning  React Hook useEffect has a missing dependency: 'fetchAssignment'. Either include it or remove the dependency array                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              react-hooks/exhaustive-deps
+  105:14  warning  'error' is defined but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               @typescript-eslint/no-unused-vars
+
+/Users/chiragluhach/Desktop/DSA-Dashboard/app/student/contests/[id]/leaderboard/page.tsx
+   6:10  warning  'Trophy' is defined but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       @typescript-eslint/no-unused-vars
+   6:18  warning  'Loader2' is defined but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      @typescript-eslint/no-unused-vars
+  30:7   error    Error: Cannot access variable before it is declared
+
+`fetchContest` is accessed before it is declared, which prevents the earlier access from updating when this value changes over time.
+
+/Users/chiragluhach/Desktop/DSA-Dashboard/app/student/contests/[id]/leaderboard/page.tsx:30:7
+  28 |   useEffect(() => {
+  29 |     if (id) {
+> 30 |       fetchContest();
+     |       ^^^^^^^^^^^^ `fetchContest` accessed before it is declared
+  31 |       fetchLeaderboard();
+  32 |     }
+  33 |   }, [id]);
+
+/Users/chiragluhach/Desktop/DSA-Dashboard/app/student/contests/[id]/leaderboard/page.tsx:35:3
+  33 |   }, [id]);
+  34 |
+> 35 |   async function fetchContest() {
+     |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 36 |     try {
+     | ^^^^^^^^^
+> 37 |       const res = await fetch(`/api/contests/${id}`);
+     | ^^^^^^^^^
+> 38 |       const data = await res.json();
+     | ^^^^^^^^^
+> 39 |       if (data.success) setContest(data.contest);
+     | ^^^^^^^^^
+> 40 |     } catch (_) {}
+     | ^^^^^^^^^
+> 41 |   }
+     | ^^^^ `fetchContest` is declared here
+  42 |
+  43 |   async function fetchLeaderboard() {
+  44 |     try {  react-hooks/immutability
+  31:7   error    Error: Cannot access variable before it is declared
+
+`fetchLeaderboard` is accessed before it is declared, which prevents the earlier access from updating when this value changes over time.
+
+/Users/chiragluhach/Desktop/DSA-Dashboard/app/student/contests/[id]/leaderboard/page.tsx:31:7
+  29 |     if (id) {
+  30 |       fetchContest();
+> 31 |       fetchLeaderboard();
+     |       ^^^^^^^^^^^^^^^^ `fetchLeaderboard` accessed before it is declared
+  32 |     }
+  33 |   }, [id]);
+  34 |
+
+/Users/chiragluhach/Desktop/DSA-Dashboard/app/student/contests/[id]/leaderboard/page.tsx:43:3
+  41 |   }
+  42 |
+> 43 |   async function fetchLeaderboard() {
+     |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 44 |     try {
+     | ^^^^^^^^^
+> 45 |       setLoading(true);
+     …
+     | ^^^^^^^^^
+> 54 |     }
+     | ^^^^^^^^^
+> 55 |   }
+     | ^^^^ `fetchLeaderboard` is declared here
+  56 |
+  57 |   if (loading && leaderboard.length === 0) {
+  58 |     return (                                                                                                                                                                       react-hooks/immutability
+  33:6   warning  React Hook useEffect has missing dependencies: 'fetchContest' and 'fetchLeaderboard'. Either include them or remove the dependency array                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 react-hooks/exhaustive-deps
+  40:14  warning  '_' is defined but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            @typescript-eslint/no-unused-vars
+  50:14  warning  'e' is defined but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            @typescript-eslint/no-unused-vars
+
+/Users/chiragluhach/Desktop/DSA-Dashboard/app/student/contests/[id]/page.tsx
+    6:18  warning  'Loader2' is defined but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     @typescript-eslint/no-unused-vars
+   47:13  error    Error: Cannot access variable before it is declared
+
+`fetchContest` is accessed before it is declared, which prevents the earlier access from updating when this value changes over time.
+
+/Users/chiragluhach/Desktop/DSA-Dashboard/app/student/contests/[id]/page.tsx:47:13
+  45 |
+  46 |   useEffect(() => {
+> 47 |     if (id) fetchContest();
+     |             ^^^^^^^^^^^^ `fetchContest` accessed before it is declared
+  48 |   }, [id]);
+  49 |
+  50 |   async function fetchContest() {
+
+/Users/chiragluhach/Desktop/DSA-Dashboard/app/student/contests/[id]/page.tsx:50:3
+  48 |   }, [id]);
+  49 |
+> 50 |   async function fetchContest() {
+     |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 51 |     try {
+     | ^^^^^^^^^
+> 52 |       setLoading(true);
+     …
+     | ^^^^^^^^^
+> 61 |     }
+     | ^^^^^^^^^
+> 62 |   }
+     | ^^^^ `fetchContest` is declared here
+  63 |
+  64 |   const isLive = contest?.status === "live" && new Date() >= new Date(contest.startAt) && new Date() <= new Date(contest.endAt);
+  65 |  react-hooks/immutability
+   48:6   warning  React Hook useEffect has a missing dependency: 'fetchContest'. Either include it or remove the dependency array                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         react-hooks/exhaustive-deps
+   57:14  warning  'e' is defined but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           @typescript-eslint/no-unused-vars
+  112:12  error    'CardDescription' is not defined                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        react/jsx-no-undef
+
+/Users/chiragluhach/Desktop/DSA-Dashboard/app/student/contests/[id]/problems/[problemId]/page.tsx
+  53:9   warning  'router' is assigned a value but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         @typescript-eslint/no-unused-vars
+  66:33  error    Error: Cannot access variable before it is declared
+
+`fetchContest` is accessed before it is declared, which prevents the earlier access from updating when this value changes over time.
+
+/Users/chiragluhach/Desktop/DSA-Dashboard/app/student/contests/[id]/problems/[problemId]/page.tsx:66:33
+  64 |
+  65 |   useEffect(() => {
+> 66 |     if (contestId && problemId) fetchContest();
+     |                                 ^^^^^^^^^^^^ `fetchContest` accessed before it is declared
+  67 |   }, [contestId, problemId]);
+  68 |
+  69 |   async function fetchContest() {
+
+/Users/chiragluhach/Desktop/DSA-Dashboard/app/student/contests/[id]/problems/[problemId]/page.tsx:69:3
+  67 |   }, [contestId, problemId]);
+  68 |
+> 69 |   async function fetchContest() {
+     |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 70 |     try {
+     | ^^^^^^^^^
+> 71 |       setLoading(true);
+     …
+     | ^^^^^^^^^
+> 84 |     }
+     | ^^^^^^^^^
+> 85 |   }
+     | ^^^^ `fetchContest` is declared here
+  86 |
+  87 |   async function handleSubmit() {
+  88 |     if (!cp) return;  react-hooks/immutability
+  67:6   warning  React Hook useEffect has a missing dependency: 'fetchContest'. Either include it or remove the dependency array                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     react-hooks/exhaustive-deps
+
+/Users/chiragluhach/Desktop/DSA-Dashboard/app/student/contests/page.tsx
+   5:18  warning  'Loader2' is defined but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            @typescript-eslint/no-unused-vars
+   6:10  warning  'Button' is defined but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             @typescript-eslint/no-unused-vars
+  27:5   error    Error: Cannot access variable before it is declared
+
+`fetchContests` is accessed before it is declared, which prevents the earlier access from updating when this value changes over time.
+
+/Users/chiragluhach/Desktop/DSA-Dashboard/app/student/contests/page.tsx:27:5
+  25 |
+  26 |   useEffect(() => {
+> 27 |     fetchContests();
+     |     ^^^^^^^^^^^^^ `fetchContests` accessed before it is declared
+  28 |   }, []);
+  29 |
+  30 |   async function fetchContests() {
+
+/Users/chiragluhach/Desktop/DSA-Dashboard/app/student/contests/page.tsx:30:3
+  28 |   }, []);
+  29 |
+> 30 |   async function fetchContests() {
+     |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 31 |     try {
+     | ^^^^^^^^^
+> 32 |       setLoading(true);
+     …
+     | ^^^^^^^^^
+> 41 |     }
+     | ^^^^^^^^^
+> 42 |   }
+     | ^^^^ `fetchContests` is declared here
+  43 |
+  44 |   function getStatus(c: Contest) {
+  45 |     const now = new Date();  react-hooks/immutability
+  37:14  warning  'e' is defined but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  @typescript-eslint/no-unused-vars
+
+/Users/chiragluhach/Desktop/DSA-Dashboard/app/student/leaderboard/page.tsx
+  13:10  warning  'Badge' is defined but never used              @typescript-eslint/no-unused-vars
+  72:9   warning  'sections' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+/Users/chiragluhach/Desktop/DSA-Dashboard/app/student/learn/[slug]/page.tsx
+   4:20  warning  'FileText' is defined but never used         @typescript-eslint/no-unused-vars
+   4:30  warning  'Video' is defined but never used            @typescript-eslint/no-unused-vars
+   4:37  warning  'Presentation' is defined but never used     @typescript-eslint/no-unused-vars
+   4:51  warning  'Download' is defined but never used         @typescript-eslint/no-unused-vars
+   4:61  warning  'ExternalLink' is defined but never used     @typescript-eslint/no-unused-vars
+   8:3   warning  'CardDescription' is defined but never used  @typescript-eslint/no-unused-vars
+   9:3   warning  'CardHeader' is defined but never used       @typescript-eslint/no-unused-vars
+  10:3   warning  'CardTitle' is defined but never used        @typescript-eslint/no-unused-vars
+  12:10  warning  'Badge' is defined but never used            @typescript-eslint/no-unused-vars
+  15:10  warning  'ContentViewer' is defined but never used    @typescript-eslint/no-unused-vars
+  16:10  warning  'ProgressTracker' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/chiragluhach/Desktop/DSA-Dashboard/app/student/learn/page.tsx
+   47:9   warning  'courseIds' is assigned a value but never used  @typescript-eslint/no-unused-vars
+  138:19  warning  'completed' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+/Users/chiragluhach/Desktop/DSA-Dashboard/app/student/play/[sessionId]/page.tsx
+  129:5  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+/Users/chiragluhach/Desktop/DSA-Dashboard/app/student/play/[sessionId]/page.tsx:129:5
+  127 |       mobileRegex.test(ua) || window.innerWidth <= 768;
+  128 |
+> 129 |     setIsMobile(isMobileDevice);
+      |     ^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  130 |   }, []);
+  131 |
+  132 |   // Cache current user id (used for realtime score updates)                                                                                                                                  react-hooks/set-state-in-effect
+  143:7  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+/Users/chiragluhach/Desktop/DSA-Dashboard/app/student/play/[sessionId]/page.tsx:143:7
+  141 |   useEffect(() => {
+  142 |     if (session?.status === "live" && fullscreenGranted && !isFullscreen) {
+> 143 |       setFullscreenWarningTimer(15); // 15 second countdown
+      |       ^^^^^^^^^^^^^^^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  144 |       const interval = setInterval(() => {
+  145 |         setFullscreenWarningTimer((prev) => {
+  146 |           if (prev <= 1) {  react-hooks/set-state-in-effect
+  306:5  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+/Users/chiragluhach/Desktop/DSA-Dashboard/app/student/play/[sessionId]/page.tsx:306:5
+  304 |   // Initial fetch
+  305 |   useEffect(() => {
+> 306 |     fetchSession();
+      |     ^^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  307 |   }, [fetchSession]);
+  308 |
+  309 |   // Check fullscreen status periodically when quiz is live                                                                                                                                                    react-hooks/set-state-in-effect
+  398:7  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+/Users/chiragluhach/Desktop/DSA-Dashboard/app/student/play/[sessionId]/page.tsx:398:7
+  396 |       !session.startedAt
+  397 |     ) {
+> 398 |       setTimeRemaining(0);
+      |       ^^^^^^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  399 |       return;
+  400 |     }
+  401 |                                                                                                                                                                                                           react-hooks/set-state-in-effect
+  434:7  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+/Users/chiragluhach/Desktop/DSA-Dashboard/app/student/play/[sessionId]/page.tsx:434:7
+  432 |     const total = session.quiz.questions.length;
+  433 |     if (total > 0 && questionSubmissions.size >= total) {
+> 434 |       setIsConfirmingSubmit(false);
+      |       ^^^^^^^^^^^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  435 |       setUnansweredQuestions([]);
+  436 |     }
+  437 |   }, [session?.quiz.questions, questionSubmissions]);                                         react-hooks/set-state-in-effect
+
+/Users/chiragluhach/Desktop/DSA-Dashboard/app/student/portfolio/page.tsx
+  245:19  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+/Users/chiragluhach/Desktop/DSA-Dashboard/app/student/quiz-history/[sessionId]/page.tsx
+   10:3   warning  'Clock' is defined but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           @typescript-eslint/no-unused-vars
+   65:5   error    Error: Cannot access variable before it is declared
+
+`fetchReviewData` is accessed before it is declared, which prevents the earlier access from updating when this value changes over time.
+
+/Users/chiragluhach/Desktop/DSA-Dashboard/app/student/quiz-history/[sessionId]/page.tsx:65:5
+  63 |
+  64 |   useEffect(() => {
+> 65 |     fetchReviewData();
+     |     ^^^^^^^^^^^^^^^ `fetchReviewData` accessed before it is declared
+  66 |   }, [sessionId]);
+  67 |
+  68 |   const fetchReviewData = async () => {
+
+/Users/chiragluhach/Desktop/DSA-Dashboard/app/student/quiz-history/[sessionId]/page.tsx:68:3
+  66 |   }, [sessionId]);
+  67 |
+> 68 |   const fetchReviewData = async () => {
+     |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 69 |     try {
+     | ^^^^^^^^^
+> 70 |       const response = await fetch(`/api/quiz-history/${sessionId}`);
+     …
+     | ^^^^^^^^^
+> 82 |     }
+     | ^^^^^^^^^
+> 83 |   };
+     | ^^^^^ `fetchReviewData` is declared here
+  84 |
+  85 |   const getDifficultyColor = (difficulty: string) => {
+  86 |     switch (difficulty) {  react-hooks/immutability
+   66:6   warning  React Hook useEffect has a missing dependency: 'fetchReviewData'. Either include it or remove the dependency array                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          react-hooks/exhaustive-deps
+  220:19  warning  'correctOption' is assigned a value but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          @typescript-eslint/no-unused-vars
+
+/Users/chiragluhach/Desktop/DSA-Dashboard/app/student/quiz-history/page.tsx
+   6:3   warning  'Clock' is defined but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   @typescript-eslint/no-unused-vars
+   9:3   warning  'XCircle' is defined but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 @typescript-eslint/no-unused-vars
+  32:10  warning  'Tabs' is defined but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    @typescript-eslint/no-unused-vars
+  32:16  warning  'TabsContent' is defined but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             @typescript-eslint/no-unused-vars
+  32:29  warning  'TabsList' is defined but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                @typescript-eslint/no-unused-vars
+  32:39  warning  'TabsTrigger' is defined but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             @typescript-eslint/no-unused-vars
+  57:5   error    Error: Cannot access variable before it is declared
+
+`fetchHistory` is accessed before it is declared, which prevents the earlier access from updating when this value changes over time.
+
+/Users/chiragluhach/Desktop/DSA-Dashboard/app/student/quiz-history/page.tsx:57:5
+  55 |
+  56 |   useEffect(() => {
+> 57 |     fetchHistory();
+     |     ^^^^^^^^^^^^ `fetchHistory` accessed before it is declared
+  58 |   }, [filterTopic, filterDifficulty]);
+  59 |
+  60 |   const fetchHistory = async () => {
+
+/Users/chiragluhach/Desktop/DSA-Dashboard/app/student/quiz-history/page.tsx:60:3
+  58 |   }, [filterTopic, filterDifficulty]);
+  59 |
+> 60 |   const fetchHistory = async () => {
+     |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 61 |     try {
+     | ^^^^^^^^^
+> 62 |       const response = await fetch(
+     …
+     | ^^^^^^^^^
+> 73 |     }
+     | ^^^^^^^^^
+> 74 |   };
+     | ^^^^^ `fetchHistory` is declared here
+  75 |
+  76 |   const filteredHistory = history;
+  77 |  react-hooks/immutability
+  58:6   warning  React Hook useEffect has a missing dependency: 'fetchHistory'. Either include it or remove the dependency array                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     react-hooks/exhaustive-deps
+  78:9   warning  'getDifficultyColor' is assigned a value but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             @typescript-eslint/no-unused-vars
+
+/Users/chiragluhach/Desktop/DSA-Dashboard/app/student/settings/page.tsx
+  75:30  warning  Compilation Skipped: Use of incompatible library
+
+This API returns functions which cannot be memoized without leading to stale UI. To prevent this, by default React Compiler will skip memoizing this component/hook. However, you may see issues if values from this API are passed to other components/hooks that are memoized.
+
+/Users/chiragluhach/Desktop/DSA-Dashboard/app/student/settings/page.tsx:75:30
+  73 |   });
+  74 |
+> 75 |   const selectedDepartment = watch("department");
+     |                              ^^^^^ React Hook Form's `useForm()` API returns a `watch()` function which cannot be memoized safely.
+  76 |
+  77 |   useEffect(() => {
+  78 |     if (profile) {  react-hooks/incompatible-library
+
+/Users/chiragluhach/Desktop/DSA-Dashboard/app/student/study-recommendations/page.tsx
+  44:5  error  Error: Cannot access variable before it is declared
+
+`fetchRecommendations` is accessed before it is declared, which prevents the earlier access from updating when this value changes over time.
+
+/Users/chiragluhach/Desktop/DSA-Dashboard/app/student/study-recommendations/page.tsx:44:5
+  42 |
+  43 |   useEffect(() => {
+> 44 |     fetchRecommendations();
+     |     ^^^^^^^^^^^^^^^^^^^^ `fetchRecommendations` accessed before it is declared
+  45 |   }, []);
+  46 |
+  47 |   const fetchRecommendations = async () => {
+
+/Users/chiragluhach/Desktop/DSA-Dashboard/app/student/study-recommendations/page.tsx:47:3
+  45 |   }, []);
+  46 |
+> 47 |   const fetchRecommendations = async () => {
+     |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 48 |     try {
+     | ^^^^^^^^^
+> 49 |       const response = await fetch("/api/study-recommendations");
+     …
+     | ^^^^^^^^^
+> 59 |     }
+     | ^^^^^^^^^
+> 60 |   };
+     | ^^^^^ `fetchRecommendations` is declared here
+  61 |
+  62 |   const getRecommendationIcon = (type: string) => {
+  63 |     switch (type) {  react-hooks/immutability
+
+/Users/chiragluhach/Desktop/DSA-Dashboard/app/teacher/assignments/[id]/submissions/page.tsx
+    7:3   warning  'FileText' is defined but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               @typescript-eslint/no-unused-vars
+   14:3   warning  'Download' is defined but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               @typescript-eslint/no-unused-vars
+  111:5   error    Error: Cannot access variable before it is declared
+
+`fetchData` is accessed before it is declared, which prevents the earlier access from updating when this value changes over time.
+
+/Users/chiragluhach/Desktop/DSA-Dashboard/app/teacher/assignments/[id]/submissions/page.tsx:111:5
+  109 |
+  110 |   useEffect(() => {
+> 111 |     fetchData();
+      |     ^^^^^^^^^ `fetchData` accessed before it is declared
+  112 |   }, [assignmentId]);
+  113 |
+  114 |   const fetchData = async () => {
+
+/Users/chiragluhach/Desktop/DSA-Dashboard/app/teacher/assignments/[id]/submissions/page.tsx:114:3
+  112 |   }, [assignmentId]);
+  113 |
+> 114 |   const fetchData = async () => {
+      |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 115 |     try {
+      | ^^^^^^^^^
+> 116 |       setLoading(true);
+      …
+      | ^^^^^^^^^
+> 136 |     }
+      | ^^^^^^^^^
+> 137 |   };
+      | ^^^^^ `fetchData` is declared here
+  138 |
+  139 |   const handleGrade = async (submissionId: string) => {
+  140 |     if (!grade || !assignment) return;  react-hooks/immutability
+  112:6   warning  React Hook useEffect has a missing dependency: 'fetchData'. Either include it or remove the dependency array                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       react-hooks/exhaustive-deps
+  131:14  warning  'error' is defined but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  @typescript-eslint/no-unused-vars
+
+/Users/chiragluhach/Desktop/DSA-Dashboard/app/teacher/assignments/create/page.tsx
+  93:22  warning  Compilation Skipped: Use of incompatible library
+
+This API returns functions which cannot be memoized without leading to stale UI. To prevent this, by default React Compiler will skip memoizing this component/hook. However, you may see issues if values from this API are passed to other components/hooks that are memoized.
+
+/Users/chiragluhach/Desktop/DSA-Dashboard/app/teacher/assignments/create/page.tsx:93:22
+  91 |   });
+  92 |
+> 93 |   const difficulty = watch("difficulty");
+     |                      ^^^^^ React Hook Form's `useForm()` API returns a `watch()` function which cannot be memoized safely.
+  94 |   const status = watch("status");
+  95 |   const targetDepartment = watch("targetDepartment");
+  96 |  react-hooks/incompatible-library
+
+/Users/chiragluhach/Desktop/DSA-Dashboard/app/teacher/cheating-detection/page.tsx
+   9:3  warning  'Clock' is defined but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               @typescript-eslint/no-unused-vars
+  59:5  error    Error: Cannot access variable before it is declared
+
+`fetchViolations` is accessed before it is declared, which prevents the earlier access from updating when this value changes over time.
+
+/Users/chiragluhach/Desktop/DSA-Dashboard/app/teacher/cheating-detection/page.tsx:59:5
+  57 |
+  58 |   useEffect(() => {
+> 59 |     fetchViolations();
+     |     ^^^^^^^^^^^^^^^ `fetchViolations` accessed before it is declared
+  60 |   }, [filterSession]);
+  61 |
+  62 |   const fetchViolations = async () => {
+
+/Users/chiragluhach/Desktop/DSA-Dashboard/app/teacher/cheating-detection/page.tsx:62:3
+  60 |   }, [filterSession]);
+  61 |
+> 62 |   const fetchViolations = async () => {
+     |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 63 |     try {
+     | ^^^^^^^^^
+> 64 |       const response = await fetch(
+     …
+     | ^^^^^^^^^
+> 76 |     }
+     | ^^^^^^^^^
+> 77 |   };
+     | ^^^^^ `fetchViolations` is declared here
+  78 |
+  79 |   const getSeverityColor = (count: number) => {
+  80 |     if (count >= 5) return "bg-red-500/10 text-red-600 border-red-500/20";  react-hooks/immutability
+  60:6  warning  React Hook useEffect has a missing dependency: 'fetchViolations'. Either include it or remove the dependency array                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              react-hooks/exhaustive-deps
+
+/Users/chiragluhach/Desktop/DSA-Dashboard/app/teacher/coding-problems/[id]/edit/page.tsx
+  39:13  error    Error: Cannot access variable before it is declared
+
+`fetchProblem` is accessed before it is declared, which prevents the earlier access from updating when this value changes over time.
+
+/Users/chiragluhach/Desktop/DSA-Dashboard/app/teacher/coding-problems/[id]/edit/page.tsx:39:13
+  37 |
+  38 |   useEffect(() => {
+> 39 |     if (id) fetchProblem();
+     |             ^^^^^^^^^^^^ `fetchProblem` accessed before it is declared
+  40 |   }, [id]);
+  41 |
+  42 |   async function fetchProblem() {
+
+/Users/chiragluhach/Desktop/DSA-Dashboard/app/teacher/coding-problems/[id]/edit/page.tsx:42:3
+  40 |   }, [id]);
+  41 |
+> 42 |   async function fetchProblem() {
+     |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 43 |     try {
+     | ^^^^^^^^^
+> 44 |       setLoading(true);
+     …
+     | ^^^^^^^^^
+> 67 |     }
+     | ^^^^^^^^^
+> 68 |   }
+     | ^^^^ `fetchProblem` is declared here
+  69 |
+  70 |   function addTestCase() {
+  71 |     setTestCases((t) => [...t, { input: "", expectedOutput: "", isSample: false }]);  react-hooks/immutability
+  40:6   warning  React Hook useEffect has a missing dependency: 'fetchProblem'. Either include it or remove the dependency array                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                react-hooks/exhaustive-deps
+
+/Users/chiragluhach/Desktop/DSA-Dashboard/app/teacher/coding-problems/page.tsx
+  27:5   error    Error: Cannot access variable before it is declared
+
+`fetchProblems` is accessed before it is declared, which prevents the earlier access from updating when this value changes over time.
+
+/Users/chiragluhach/Desktop/DSA-Dashboard/app/teacher/coding-problems/page.tsx:27:5
+  25 |
+  26 |   useEffect(() => {
+> 27 |     fetchProblems();
+     |     ^^^^^^^^^^^^^ `fetchProblems` accessed before it is declared
+  28 |   }, []);
+  29 |
+  30 |   async function fetchProblems() {
+
+/Users/chiragluhach/Desktop/DSA-Dashboard/app/teacher/coding-problems/page.tsx:30:3
+  28 |   }, []);
+  29 |
+> 30 |   async function fetchProblems() {
+     |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 31 |     try {
+     | ^^^^^^^^^
+> 32 |       setLoading(true);
+     …
+     | ^^^^^^^^^
+> 41 |     }
+     | ^^^^^^^^^
+> 42 |   }
+     | ^^^^ `fetchProblems` is declared here
+  43 |
+  44 |   async function handleDelete(id: string) {
+  45 |     if (!confirm("Delete this problem? It will be removed from any contests.")) return;  react-hooks/immutability
+  37:14  warning  'e' is defined but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     @typescript-eslint/no-unused-vars
+
+/Users/chiragluhach/Desktop/DSA-Dashboard/app/teacher/contests/[id]/page.tsx
+    6:18  warning  'Loader2' is defined but never used                                                                                                           @typescript-eslint/no-unused-vars
+    6:38  warning  'Plus' is defined but never used                                                                                                              @typescript-eslint/no-unused-vars
+   46:9   warning  'router' is assigned a value but never used                                                                                                   @typescript-eslint/no-unused-vars
+   62:6   warning  React Hook useEffect has a missing dependency: 'fetchContest'. Either include it or remove the dependency array                               react-hooks/exhaustive-deps
+   67:6   warning  React Hook useEffect has missing dependencies: 'fetchLeaderboard' and 'fetchSubmissions'. Either include them or remove the dependency array  react-hooks/exhaustive-deps
+   76:14  warning  'e' is defined but never used                                                                                                                 @typescript-eslint/no-unused-vars
+   88:14  warning  '_' is defined but never used                                                                                                                 @typescript-eslint/no-unused-vars
+   96:14  warning  '_' is defined but never used                                                                                                                 @typescript-eslint/no-unused-vars
+  104:14  warning  '_' is defined but never used                                                                                                                 @typescript-eslint/no-unused-vars
+
+/Users/chiragluhach/Desktop/DSA-Dashboard/app/teacher/contests/page.tsx
+  57:14  warning  'e' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/chiragluhach/Desktop/DSA-Dashboard/app/teacher/export-reports/page.tsx
+  3:20  warning  'useEffect' is defined but never used  @typescript-eslint/no-unused-vars
+  7:3   warning  'Calendar' is defined but never used   @typescript-eslint/no-unused-vars
+
+/Users/chiragluhach/Desktop/DSA-Dashboard/app/teacher/portfolio/page.tsx
+   50:5   error    Error: Cannot access variable before it is declared
+
+`fetchProjects` is accessed before it is declared, which prevents the earlier access from updating when this value changes over time.
+
+/Users/chiragluhach/Desktop/DSA-Dashboard/app/teacher/portfolio/page.tsx:50:5
+  48 |
+  49 |   useEffect(() => {
+> 50 |     fetchProjects();
+     |     ^^^^^^^^^^^^^ `fetchProjects` accessed before it is declared
+  51 |   }, []);
+  52 |
+  53 |   async function fetchProjects() {
+
+/Users/chiragluhach/Desktop/DSA-Dashboard/app/teacher/portfolio/page.tsx:53:3
+  51 |   }, []);
+  52 |
+> 53 |   async function fetchProjects() {
+     |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 54 |     try {
+     | ^^^^^^^^^
+> 55 |       setLoading(true);
+     …
+     | ^^^^^^^^^
+> 65 |     }
+     | ^^^^^^^^^
+> 66 |   }
+     | ^^^^ `fetchProjects` is declared here
+  67 |
+  68 |   const sections = Array.from(
+  69 |     new Set(projects.map((p) => p.student.section).filter(Boolean))  react-hooks/immutability
+  150:23  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              @next/next/no-img-element
+
+/Users/chiragluhach/Desktop/DSA-Dashboard/app/teacher/question-bank/page.tsx
+  74:5  error  Error: Cannot access variable before it is declared
+
+`fetchQuestions` is accessed before it is declared, which prevents the earlier access from updating when this value changes over time.
+
+/Users/chiragluhach/Desktop/DSA-Dashboard/app/teacher/question-bank/page.tsx:74:5
+  72 |
+  73 |   useEffect(() => {
+> 74 |     fetchQuestions();
+     |     ^^^^^^^^^^^^^^ `fetchQuestions` accessed before it is declared
+  75 |   }, []);
+  76 |
+  77 |   const fetchQuestions = async () => {
+
+/Users/chiragluhach/Desktop/DSA-Dashboard/app/teacher/question-bank/page.tsx:77:3
+  75 |   }, []);
+  76 |
+> 77 |   const fetchQuestions = async () => {
+     |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 78 |     try {
+     | ^^^^^^^^^
+> 79 |       const response = await fetch("/api/question-bank");
+     …
+     | ^^^^^^^^^
+> 89 |     }
+     | ^^^^^^^^^
+> 90 |   };
+     | ^^^^^ `fetchQuestions` is declared here
+  91 |
+  92 |   const filteredQuestions = questions.filter((q) => {
+  93 |     const matchesSearch =  react-hooks/immutability
+
+/Users/chiragluhach/Desktop/DSA-Dashboard/app/teacher/quiz-marks/page.tsx
+   11:3   warning  'Download' is defined but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         @typescript-eslint/no-unused-vars
+   13:3   warning  'Filter' is defined but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           @typescript-eslint/no-unused-vars
+   14:3   warning  'Award' is defined but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            @typescript-eslint/no-unused-vars
+   94:9   warning  'router' is assigned a value but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  @typescript-eslint/no-unused-vars
+   95:42  error    Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     @typescript-eslint/no-explicit-any
+  137:7   error    Error: Cannot access variable before it is declared
+
+`fetchResults` is accessed before it is declared, which prevents the earlier access from updating when this value changes over time.
+
+/Users/chiragluhach/Desktop/DSA-Dashboard/app/teacher/quiz-marks/page.tsx:137:7
+  135 |   useEffect(() => {
+  136 |     if (selectedQuizId) {
+> 137 |       fetchResults(selectedQuizId);
+      |       ^^^^^^^^^^^^ `fetchResults` accessed before it is declared
+  138 |     }
+  139 |   }, [selectedQuizId]);
+  140 |
+
+/Users/chiragluhach/Desktop/DSA-Dashboard/app/teacher/quiz-marks/page.tsx:141:3
+  139 |   }, [selectedQuizId]);
+  140 |
+> 141 |   async function fetchResults(quizId: string) {
+      |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 142 |     setLoading(true);
+      | ^^^^^^^^^^^^^^^^^^^^^
+> 143 |     try {
+      …
+      | ^^^^^^^^^^^^^^^^^^^^^
+> 155 |     }
+      | ^^^^^^^^^^^^^^^^^^^^^
+> 156 |   }
+      | ^^^^ `fetchResults` is declared here
+  157 |
+  158 |   const toggleStudentExpansion = (studentId: string) => {
+  159 |     setExpandedStudents((prev) => {  react-hooks/immutability
+  177:9   warning  'filteredStudents' is assigned a value but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        @typescript-eslint/no-unused-vars
+
+/Users/chiragluhach/Desktop/DSA-Dashboard/app/teacher/quizzes/create/page.tsx
+  148:30  warning  Compilation Skipped: Use of incompatible library
+
+This API returns functions which cannot be memoized without leading to stale UI. To prevent this, by default React Compiler will skip memoizing this component/hook. However, you may see issues if values from this API are passed to other components/hooks that are memoized.
+
+/Users/chiragluhach/Desktop/DSA-Dashboard/app/teacher/quizzes/create/page.tsx:148:30
+  146 |   });
+  147 |
+> 148 |   const selectedDifficulty = watch("difficulty");
+      |                              ^^^^^ React Hook Form's `useForm()` API returns a `watch()` function which cannot be memoized safely.
+  149 |   const selectedTopics = watch("topics") || [];
+  150 |   const timeLimitMinutes = Math.floor((watch("timeLimit") || 900) / 60);
+  151 |  react-hooks/incompatible-library
+
+/Users/chiragluhach/Desktop/DSA-Dashboard/app/teacher/quizzes/page.tsx
+   19:3  warning  'Shuffle' is defined but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           @typescript-eslint/no-unused-vars
+   20:3  warning  'Wand2' is defined but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             @typescript-eslint/no-unused-vars
+  153:5  error    Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+/Users/chiragluhach/Desktop/DSA-Dashboard/app/teacher/quizzes/page.tsx:153:5
+  151 |
+  152 |   useEffect(() => {
+> 153 |     fetchQuizzes();
+      |     ^^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  154 |   }, [fetchQuizzes]);
+  155 |
+  156 |   const startSession = async (quizId: string) => {  react-hooks/set-state-in-effect
+
+/Users/chiragluhach/Desktop/DSA-Dashboard/app/teacher/session/[sessionId]/page.tsx
+  129:5  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+/Users/chiragluhach/Desktop/DSA-Dashboard/app/teacher/session/[sessionId]/page.tsx:129:5
+  127 |   // Initial fetch
+  128 |   useEffect(() => {
+> 129 |     fetchSession();
+      |     ^^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  130 |   }, [fetchSession]);
+  131 |
+  132 |   // Subscribe to realtime updates                              react-hooks/set-state-in-effect
+  161:7  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+/Users/chiragluhach/Desktop/DSA-Dashboard/app/teacher/session/[sessionId]/page.tsx:161:7
+  159 |   useEffect(() => {
+  160 |     if (!session || session.status !== "live" || !session.startedAt) {
+> 161 |       setTimeRemaining(0);
+      |       ^^^^^^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  162 |       return;
+  163 |     }
+  164 |  react-hooks/set-state-in-effect
+
+/Users/chiragluhach/Desktop/DSA-Dashboard/app/teacher/settings/page.tsx
+  75:30  warning  Compilation Skipped: Use of incompatible library
+
+This API returns functions which cannot be memoized without leading to stale UI. To prevent this, by default React Compiler will skip memoizing this component/hook. However, you may see issues if values from this API are passed to other components/hooks that are memoized.
+
+/Users/chiragluhach/Desktop/DSA-Dashboard/app/teacher/settings/page.tsx:75:30
+  73 |   });
+  74 |
+> 75 |   const selectedDepartment = watch("department");
+     |                              ^^^^^ React Hook Form's `useForm()` API returns a `watch()` function which cannot be memoized safely.
+  76 |
+  77 |   useEffect(() => {
+  78 |     if (profile) {  react-hooks/incompatible-library
+
+/Users/chiragluhach/Desktop/DSA-Dashboard/components/dashboard/student-performance-dashboard.tsx
+  123:5  error  Error: Cannot access variable before it is declared
+
+`fetchAnalytics` is accessed before it is declared, which prevents the earlier access from updating when this value changes over time.
+
+/Users/chiragluhach/Desktop/DSA-Dashboard/components/dashboard/student-performance-dashboard.tsx:123:5
+  121 |
+  122 |   useEffect(() => {
+> 123 |     fetchAnalytics();
+      |     ^^^^^^^^^^^^^^ `fetchAnalytics` accessed before it is declared
+  124 |   }, []);
+  125 |
+  126 |   const fetchAnalytics = async () => {
+
+/Users/chiragluhach/Desktop/DSA-Dashboard/components/dashboard/student-performance-dashboard.tsx:126:3
+  124 |   }, []);
+  125 |
+> 126 |   const fetchAnalytics = async () => {
+      |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 127 |     try {
+      | ^^^^^^^^^
+> 128 |       setLoading(true);
+      …
+      | ^^^^^^^^^
+> 136 |     }
+      | ^^^^^^^^^
+> 137 |   };
+      | ^^^^^ `fetchAnalytics` is declared here
+  138 |
+  139 |   if (loading) {
+  140 |     return (  react-hooks/immutability
+
+/Users/chiragluhach/Desktop/DSA-Dashboard/components/dashboard/teacher-performance-dashboard.tsx
+  241:5   error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+/Users/chiragluhach/Desktop/DSA-Dashboard/components/dashboard/teacher-performance-dashboard.tsx:241:5
+  239 |
+  240 |   useEffect(() => {
+> 241 |     fetchAnalytics();
+      |     ^^^^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  242 |   }, [fetchAnalytics]);
+  243 |
+  244 |   // Reset dependent filters when higher-level filter changes                                                                                               react-hooks/set-state-in-effect
+  246:5   error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+/Users/chiragluhach/Desktop/DSA-Dashboard/components/dashboard/teacher-performance-dashboard.tsx:246:5
+  244 |   // Reset dependent filters when higher-level filter changes
+  245 |   useEffect(() => {
+> 246 |     setSelectedSection("all");
+      |     ^^^^^^^^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  247 |     setSelectedStudent("all");
+  248 |   }, [selectedDepartment]);
+  249 |                                               react-hooks/set-state-in-effect
+  251:5   error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+/Users/chiragluhach/Desktop/DSA-Dashboard/components/dashboard/teacher-performance-dashboard.tsx:251:5
+  249 |
+  250 |   useEffect(() => {
+> 251 |     setSelectedStudent("all");
+      |     ^^^^^^^^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  252 |   }, [selectedSection]);
+  253 |
+  254 |   useEffect(() => {                                                                                                                           react-hooks/set-state-in-effect
+  255:63  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+/Users/chiragluhach/Desktop/DSA-Dashboard/components/dashboard/teacher-performance-dashboard.tsx:255:63
+  253 |
+  254 |   useEffect(() => {
+> 255 |     if (selectedStudent === "all" && activeTab === "student") setActiveTab("overview");
+      |                                                               ^^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  256 |   }, [selectedStudent, activeTab]);
+  257 |
+  258 |   useEffect(() => {  react-hooks/set-state-in-effect
+  259:5   error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+/Users/chiragluhach/Desktop/DSA-Dashboard/components/dashboard/teacher-performance-dashboard.tsx:259:5
+  257 |
+  258 |   useEffect(() => {
+> 259 |     setSelectedStudentQuizFilter("all");
+      |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  260 |   }, [selectedStudent]);
+  261 |
+  262 |   const handleExport = async (type: string = "all") => {                                                                  react-hooks/set-state-in-effect
+
+/Users/chiragluhach/Desktop/DSA-Dashboard/components/discussions/discussion-board.tsx
+  189:5  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+/Users/chiragluhach/Desktop/DSA-Dashboard/components/discussions/discussion-board.tsx:189:5
+  187 |
+  188 |   useEffect(() => {
+> 189 |     fetchThreads();
+      |     ^^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  190 |     // eslint-disable-next-line react-hooks/exhaustive-deps
+  191 |   }, [role]);
+  192 |                              react-hooks/set-state-in-effect
+  195:7  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+/Users/chiragluhach/Desktop/DSA-Dashboard/components/discussions/discussion-board.tsx:195:7
+  193 |   useEffect(() => {
+  194 |     if (activeThreadId) {
+> 195 |       fetchMessages(activeThreadId);
+      |       ^^^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  196 |       setReplyTo(null);
+  197 |       setMessageText("");
+  198 |     }  react-hooks/set-state-in-effect
+
+/Users/chiragluhach/Desktop/DSA-Dashboard/components/learning/content-viewer.tsx
+  4:41  warning  'X' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/chiragluhach/Desktop/DSA-Dashboard/components/learning/course-content-client.tsx
+  37:10  warning  'loading' is assigned a value but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              @typescript-eslint/no-unused-vars
+  40:5   error    Error: Cannot access variable before it is declared
+
+`fetchProgress` is accessed before it is declared, which prevents the earlier access from updating when this value changes over time.
+
+/Users/chiragluhach/Desktop/DSA-Dashboard/components/learning/course-content-client.tsx:40:5
+  38 |
+  39 |   useEffect(() => {
+> 40 |     fetchProgress();
+     |     ^^^^^^^^^^^^^ `fetchProgress` accessed before it is declared
+  41 |   }, [courseId]);
+  42 |
+  43 |   async function fetchProgress() {
+
+/Users/chiragluhach/Desktop/DSA-Dashboard/components/learning/course-content-client.tsx:43:3
+  41 |   }, [courseId]);
+  42 |
+> 43 |   async function fetchProgress() {
+     |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 44 |     try {
+     | ^^^^^^^^^
+> 45 |       const response = await fetch(
+     …
+     | ^^^^^^^^^
+> 61 |     }
+     | ^^^^^^^^^
+> 62 |   }
+     | ^^^^ `fetchProgress` is declared here
+  63 |
+  64 |   async function markAsViewed(contentId: string) {
+  65 |     // Automatically mark as viewed when content is opened  react-hooks/immutability
+  41:6   warning  React Hook useEffect has a missing dependency: 'fetchProgress'. Either include it or remove the dependency array                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          react-hooks/exhaustive-deps
+  52:76  error    Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  @typescript-eslint/no-explicit-any
+
+/Users/chiragluhach/Desktop/DSA-Dashboard/components/learning/progress-tracker.tsx
+  23:5  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+/Users/chiragluhach/Desktop/DSA-Dashboard/components/learning/progress-tracker.tsx:23:5
+  21 |
+  22 |   useEffect(() => {
+> 23 |     setIsCompleted(initialCompleted);
+     |     ^^^^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  24 |   }, [initialCompleted]);
+  25 |
+  26 |   async function toggleProgress() {  react-hooks/set-state-in-effect
+
+/Users/chiragluhach/Desktop/DSA-Dashboard/hooks/use-anti-cheat.ts
+   52:9  warning  The 'getViolationMessage' function makes the dependencies of useCallback Hook (at line 160) change on every render. Move it inside the useCallback callback. Alternatively, wrap the definition of 'getViolationMessage' in its own useCallback() Hook  react-hooks/exhaustive-deps
+  498:6  warning  React Hook useEffect has missing dependencies: 'maxViolations' and 'onViolation'. Either include them or remove the dependency array                                                                                                                    react-hooks/exhaustive-deps
+
+/Users/chiragluhach/Desktop/DSA-Dashboard/lib/db.ts
+  7:24  warning  'Quiz' is defined but never used         @typescript-eslint/no-unused-vars
+  7:30  warning  'Question' is defined but never used     @typescript-eslint/no-unused-vars
+  7:40  warning  'QuizSession' is defined but never used  @typescript-eslint/no-unused-vars
+  7:53  warning  'Submission' is defined but never used   @typescript-eslint/no-unused-vars
+
+/Users/chiragluhach/Desktop/DSA-Dashboard/lib/supabase/middleware.ts
+  68:5  warning  'error' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+✖ 132 problems (40 errors, 92 warnings)
+

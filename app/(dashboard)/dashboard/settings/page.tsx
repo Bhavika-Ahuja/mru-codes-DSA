@@ -66,6 +66,7 @@ export default function SettingsPage() {
         rollNumber: profile.rollNumber || "",
         section: profile.section || "",
       });
+       
       setIsInitialLoading(false);
     }
   }, [profile, reset]);

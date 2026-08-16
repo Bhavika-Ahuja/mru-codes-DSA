@@ -154,7 +154,7 @@ export default function CreateQuizPage() {
     if (quizIdToLoad) {
       loadQuiz(quizIdToLoad);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [quizIdToLoad]);
 
   const loadQuiz = async (quizId: string) => {

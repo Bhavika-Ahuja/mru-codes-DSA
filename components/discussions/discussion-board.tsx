@@ -187,7 +187,7 @@ export function DiscussionBoard({
 
   useEffect(() => {
     fetchThreads();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [role]);
 
   useEffect(() => {
