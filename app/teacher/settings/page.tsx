@@ -30,8 +30,7 @@ import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { useUser } from "@/providers/user-provider";
 import toast from "react-hot-toast";
-import type { Department } from "@/lib/departments";
-import { DEPARTMENT_OPTIONS, SECTION_OPTIONS, departmentRequiresSection } from "@/lib/departments";
+import { TEACHER_DEPARTMENT_OPTIONS } from "@/lib/departments";
 import {
   Select,
   SelectContent,
@@ -102,7 +101,8 @@ export default function TeacherSettingsPage() {
           fullName: data.fullName,
           rollNumber: data.rollNumber || null,
           department: data.department || null,
-          section: data.section || null,
+          // Teachers are never tied to a section; clear any legacy value.
+          section: null,
         }),
       });
 
@@ -236,10 +236,9 @@ export default function TeacherSettingsPage() {
                   <Select
                     value={selectedDepartment}
                     onValueChange={(value) => {
+                      // Teachers are never tied to a section.
                       setValue("department", value, { shouldValidate: true });
-                      if (!departmentRequiresSection(value as Department)) {
-                        setValue("section", "", { shouldValidate: true });
-                      }
+                      setValue("section", "", { shouldValidate: true });
                     }}
                     disabled={isLoading}
                   >
@@ -247,7 +246,7 @@ export default function TeacherSettingsPage() {
                       <SelectValue placeholder="Select department" />
                     </SelectTrigger>
                     <SelectContent>
-                      {DEPARTMENT_OPTIONS.map((opt) => (
+                      {TEACHER_DEPARTMENT_OPTIONS.map((opt) => (
                         <SelectItem key={opt.value} value={opt.value}>
                           {opt.label}
                         </SelectItem>
@@ -280,33 +279,6 @@ export default function TeacherSettingsPage() {
                   )}
                 </div>
 
-                <Separator />
-
-                {/* Section (CSE/AIML only) */}
-                {departmentRequiresSection(selectedDepartment as Department) && (
-                  <div className="space-y-2">
-                    <Label htmlFor="section" className="flex items-center gap-2">
-                      <Building2 className="h-4 w-4 text-muted-foreground" />
-                      Section
-                    </Label>
-                    <Select
-                      value={watch("section")}
-                      onValueChange={(value) => setValue("section", value, { shouldValidate: true })}
-                      disabled={isLoading}
-                    >
-                      <SelectTrigger className="h-11">
-                        <SelectValue placeholder="Select section" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {SECTION_OPTIONS.map((s) => (
-                          <SelectItem key={s} value={s}>
-                            Section {s}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                )}
               </CardContent>
             </Card>
 

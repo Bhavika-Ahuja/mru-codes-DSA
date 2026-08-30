@@ -14,10 +14,8 @@ export default async function TeacherDiscussionsPage() {
   }
 
   return (
-    <DiscussionBoard
-      role="teacher"
-      initialDepartment={profile.department ?? null}
-      initialSection={profile.section ?? null}
-    />
+    // A teacher's own department is not a student department, so it can't seed
+    // the target class — they choose which class to post to explicitly.
+    <DiscussionBoard role="teacher" initialDepartment={null} initialSection={null} />
   );
 }

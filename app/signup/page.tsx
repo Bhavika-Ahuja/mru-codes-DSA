@@ -28,7 +28,11 @@ import {
 import { createClient } from "@/lib/supabase/client";
 import toast from "react-hot-toast";
 import type { Department } from "@/lib/departments";
-import { DEPARTMENT_OPTIONS, SECTION_OPTIONS, departmentRequiresSection } from "@/lib/departments";
+import {
+  SECTION_OPTIONS,
+  departmentOptionsForRole,
+  roleRequiresSection,
+} from "@/lib/departments";
 
 const signupSchema = z.object({
   email: z.string().email("Please enter a valid email"),
@@ -43,8 +47,8 @@ const signupSchema = z.object({
   message: "Passwords don't match",
   path: ["confirmPassword"],
 }).refine((data) => {
-  // Section required only for CSE/AIML
-  if (departmentRequiresSection(data.department as Department)) {
+  // Section required only for students in CSE/AIML. Teachers never pick one.
+  if (roleRequiresSection(data.role, data.department as Department)) {
     return Boolean(data.section && data.section.trim().length > 0);
   }
   return true;
@@ -108,6 +112,19 @@ export default function SignupPage() {
 
   const selectedRole = watch("role");
   const selectedDepartment = watch("department");
+  const departmentOptions = departmentOptionsForRole(selectedRole);
+
+  // Student and teacher department lists are disjoint, so a department picked
+  // under one role is never valid under the other. Reset both fields on switch.
+  const handleRoleChange = (role: "student" | "teacher") => {
+    if (role === selectedRole) return;
+    setValue("role", role, { shouldValidate: true });
+    setValue("department", "", { shouldValidate: true });
+    setValue("section", "", { shouldValidate: true });
+    if (role === "teacher") {
+      setValue("rollNumber", "", { shouldValidate: true });
+    }
+  };
 
   const onSubmit = async (data: SignupFormData) => {
     setIsLoading(true);
@@ -212,7 +229,7 @@ export default function SignupPage() {
                 <div className="grid grid-cols-2 gap-3">
                   <button
                     type="button"
-                    onClick={() => setValue("role", "student")}
+                    onClick={() => handleRoleChange("student")}
                     className={`p-4 rounded-lg border-2 transition-all cursor-pointer ${selectedRole === "student"
                       ? "border-primary bg-primary/5"
                       : "border-border/50 hover:border-primary/30"
@@ -225,7 +242,7 @@ export default function SignupPage() {
                   </button>
                   <button
                     type="button"
-                    onClick={() => setValue("role", "teacher")}
+                    onClick={() => handleRoleChange("teacher")}
                     className={`p-4 rounded-lg border-2 transition-all cursor-pointer ${selectedRole === "teacher"
                       ? "border-primary bg-primary/5"
                       : "border-border/50 hover:border-primary/30"
@@ -338,7 +355,7 @@ export default function SignupPage() {
                     value={selectedDepartment}
                     onValueChange={(value) => {
                       setValue("department", value, { shouldValidate: true });
-                      if (!departmentRequiresSection(value as Department)) {
+                      if (!roleRequiresSection(selectedRole, value as Department)) {
                         setValue("section", "", { shouldValidate: true });
                       }
                     }}
@@ -348,7 +365,7 @@ export default function SignupPage() {
                       <SelectValue placeholder="Select department" />
                     </SelectTrigger>
                     <SelectContent>
-                      {DEPARTMENT_OPTIONS.map((opt) => (
+                      {departmentOptions.map((opt) => (
                         <SelectItem key={opt.value} value={opt.value}>
                           {opt.label}
                         </SelectItem>
@@ -374,8 +391,8 @@ export default function SignupPage() {
                   </div>
                 )}
 
-                {/* Section (CSE/AIML only; applies to Student + Teacher) */}
-                {departmentRequiresSection(selectedDepartment as Department) && (
+                {/* Section (students in CSE/AIML only; never shown for teachers) */}
+                {roleRequiresSection(selectedRole, selectedDepartment as Department) && (
                   <div className="space-y-2">
                     <Label htmlFor="section">Section</Label>
                     <Select
