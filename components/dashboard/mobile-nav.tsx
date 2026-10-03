@@ -20,12 +20,14 @@ import {
   ChevronRight,
   Code2,
   MessageSquare,
+  GitBranch,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const studentNav = [
   { href: "/student/dashboard", label: "Home", icon: LayoutDashboard },
   { href: "/student/learn", label: "Learn", icon: BookOpen },
+  { href: "/student/dsa-visualizer", label: "Visualizer", icon: GitBranch },
   { href: "/student/ide", label: "IDE", icon: Code2 },
   { href: "/student/quiz/join", label: "Quiz", icon: Zap },
   { href: "/student/study-recommendations", label: "Tips", icon: Lightbulb },
@@ -40,6 +42,7 @@ const teacherNav = [
   { href: "/teacher/dashboard", label: "Home", icon: LayoutDashboard },
   { href: "/teacher/quizzes", label: "Quizzes", icon: Zap },
   { href: "/teacher/quizzes/create", label: "Create", icon: Zap },
+  { href: "/teacher/dsa-visualizer", label: "Visualizer", icon: GitBranch },
   { href: "/teacher/question-bank", label: "Bank", icon: Database },
   { href: "/teacher/ide", label: "IDE", icon: Code2 },
   { href: "/teacher/cheating-detection", label: "Security", icon: Shield },
