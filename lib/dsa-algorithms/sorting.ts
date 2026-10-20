@@ -32,7 +32,7 @@ export function bubbleSort(arr: number[]): AnimationStep[] {
       array: cloneArray(array),
       description: `Pass ${i + 1}: Starting new pass through the array`,
       code: "for (let i = 0; i < n - 1; i++) {",
-      lineNumber: 2,
+      lineNumber: 4,
       variables: { i, n, swapped },
     });
 
@@ -46,7 +46,7 @@ export function bubbleSort(arr: number[]): AnimationStep[] {
         highlightIndices: [j, j + 1],
         description: `Comparing ${array[j].value} and ${array[j + 1].value}`,
         code: "if (arr[j] > arr[j + 1]) {",
-        lineNumber: 4,
+        lineNumber: 8,
         variables: { i, j, swapped },
       });
 
@@ -60,7 +60,7 @@ export function bubbleSort(arr: number[]): AnimationStep[] {
           highlightIndices: [j, j + 1],
           description: `Swapping ${array[j].value} and ${array[j + 1].value}`,
           code: "swap(arr, j, j + 1);",
-          lineNumber: 5,
+          lineNumber: 10,
           variables: { i, j, swapped: true },
         });
 
@@ -88,7 +88,7 @@ export function bubbleSort(arr: number[]): AnimationStep[] {
         array: cloneArray(array),
         description: "No swaps made - array is sorted!",
         code: "if (!swapped) break;",
-        lineNumber: 8,
+        lineNumber: 18,
       });
       break;
     }
@@ -100,7 +100,7 @@ export function bubbleSort(arr: number[]): AnimationStep[] {
     array: cloneArray(array),
     description: "Bubble Sort Complete!",
     code: "}",
-    lineNumber: 10,
+    lineNumber: 21,
   });
 
   return steps;

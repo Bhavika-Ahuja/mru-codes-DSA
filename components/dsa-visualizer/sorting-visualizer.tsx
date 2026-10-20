@@ -21,6 +21,7 @@ import { ArrayVisualization } from "./array-visualization";
 import { CodeDisplay } from "./code-display";
 import { StepDescription } from "./step-description";
 import { ComplexityAnalysis } from "./complexity-analysis";
+import { CODE_TEMPLATES } from "@/lib/dsa-algorithms/code-templates";
 
 const algorithms = [
   { value: "bubble", label: "Bubble Sort" },
@@ -288,7 +289,7 @@ export function SortingVisualizer() {
         <Card className="p-6">
           <h3 className="text-lg font-semibold mb-4">Code</h3>
           <CodeDisplay 
-            code={currentStepData?.code || "// Select algorithm and click Visualize"}
+            code={CODE_TEMPLATES[algorithm] || "// Select algorithm and click Visualize"}
             lineNumber={currentStepData?.lineNumber}
           />
         </Card>

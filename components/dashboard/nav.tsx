@@ -48,7 +48,6 @@ const teacherNav = [
   { href: "/teacher/quizzes/create", label: "Create Quiz", icon: PlusCircle },
   { href: "/teacher/quiz-marks", label: "Quiz Marks", icon: Award },
   { href: "/teacher/learn-content", label: "Upload Content", icon: BookOpen },
-  { href: "/teacher/dsa-visualizer", label: "DSA Visualizer", icon: GitBranch },
   { href: "/teacher/exam-papers", label: "Exam Papers", icon: ScrollText },
   { href: "/teacher/portfolio", label: "E-Portfolio", icon: FolderGit2 },
   { href: "/teacher/coding-problems", label: "Coding Problems", icon: Code2 },

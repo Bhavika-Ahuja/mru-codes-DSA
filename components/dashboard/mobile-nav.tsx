@@ -42,7 +42,6 @@ const teacherNav = [
   { href: "/teacher/dashboard", label: "Home", icon: LayoutDashboard },
   { href: "/teacher/quizzes", label: "Quizzes", icon: Zap },
   { href: "/teacher/quizzes/create", label: "Create", icon: Zap },
-  { href: "/teacher/dsa-visualizer", label: "Visualizer", icon: GitBranch },
   { href: "/teacher/question-bank", label: "Bank", icon: Database },
   { href: "/teacher/ide", label: "IDE", icon: Code2 },
   { href: "/teacher/cheating-detection", label: "Security", icon: Shield },
